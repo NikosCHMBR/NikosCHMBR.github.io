@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spiel — Meine Seite</title>
+
+    <!-- =============================================
+         DIESELBEN externen Dateien wie in index.html!
+         
+         Weil game.html im SELBEN Ordner liegt wie
+         index.html, sind die Pfade identisch.
+         Jede Aenderung in style.css wirkt sich also
+         automatisch auf BEIDE Seiten aus.
+         ============================================= -->
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+
+    <!-- =============================================
+         SEITEN-SPEZIFISCHES CSS
+         Wenn eine Seite eigene Styles braucht, die
+         nur hier gelten sollen, kannst du sie direkt
+         in einem <style>-Block schreiben.
+         Das ueberschreibt oder ergaenzt style.css.
+         ============================================= -->
+    <style>
+        .game-area {
+            background: var(--card-bg);
+            border: 2px solid var(--card-border);
+            border-radius: 12px;
+            padding: 3rem 2rem;
+            text-align: center;
+            margin-top: 2rem;
+        }
+
+        .game-area .placeholder-icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+        }
+
+        .game-area h2 {
+            font-family: 'Sora', sans-serif;
+            font-size: 1.3rem;
+            font-weight: 600;
+            text-transform: none;
+            letter-spacing: normal;
+            color: var(--text);
+            border-bottom: none;
+            padding-bottom: 0;
+            margin-bottom: 0.5rem;
+        }
+
+        .game-area p {
+            color: var(--subtle);
+            font-weight: 300;
+            font-size: 0.95rem;
+        }
+
+        .demo-button {
+            display: inline-block;
+            margin-top: 1.5rem;
+            padding: 0.7rem 1.8rem;
+            background: var(--accent);
+            color: var(--bg);
+            border: none;
+            border-radius: 8px;
+            font-family: 'Sora', sans-serif;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.3s, transform 0.2s;
+        }
+
+        .demo-button:hover {
+            opacity: 0.85;
+            transform: scale(1.03);
+        }
+
+        .click-counter {
+            margin-top: 1.5rem;
+            font-family: 'Space Mono', monospace;
+            font-size: 0.85rem;
+            color: var(--accent);
+            min-height: 1.2em;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- =============================================
+         NAVIGATION
+         Dieselbe Struktur wie in index.html.
+         Der Link "Start" fuehrt hier zurueck zu
+         index.html (nicht zu #start auf dieser Seite).
+         
+         TIPP: Wenn du willst, dass die Navigation auf
+         ALLEN Seiten identisch ist, musst du sie bei
+         Aenderungen in jeder HTML-Datei anpassen.
+         (Spaeter kann man das mit JavaScript oder
+         einem Framework automatisieren.)
+         ============================================= -->
+    <nav>
+        <div class="logo">// dein_name</div>
+        <ul class="nav-links">
+            <li><a href="index.html">Start</a></li>
+            <li><a href="index.html#projekte">Projekte</a></li>
+            <li><a href="index.html#ueber">Über mich</a></li>
+            <li><a href="game.html" class="nav-game-link">Spiel</a></li>
+        </ul>
+    </nav>
+
+    <!-- Seiteninhalt -->
+    <div class="page-container">
+
+        <!-- =============================================
+             ZURUECK-LINK
+             href="index.html" fuehrt zurueck zur Startseite.
+             Das ist dasselbe Prinzip wie bei den
+             Navigationslinks oben.
+             ============================================= -->
+        <a href="index.html" class="back-link">&larr; Zurück zur Startseite</a>
+
+        <h1>🎮 Spielbereich</h1>
+        <p>
+            Hier entsteht dein Spiel. Im Moment ist das ein Platzhalter —
+            später kannst du hier ein Canvas-Element einbauen und
+            mit JavaScript ein richtiges Spiel programmieren.
+        </p>
+
+        <!-- =============================================
+             SPIEL-PLATZHALTER
+             Der Button unten zeigt ein einfaches Beispiel
+             dafuer, wie JavaScript und HTML zusammenarbeiten.
+             Die Logik dafuer steht NICHT in script.js,
+             sondern direkt hier als Beispiel fuer
+             "inline JavaScript" mittels onclick="...".
+             ============================================= -->
+        <div class="game-area">
+            <div class="placeholder-icon">🕹️</div>
+            <h2>Spiel kommt bald</h2>
+            <p>In der Zwischenzeit — teste den Button:</p>
+
+            <!-- =============================================
+                 INLINE JAVASCRIPT vs EXTERNE DATEI
+                 
+                 onclick="..." ist "inline" JavaScript.
+                 Fuer kleine Dinge ist das okay, aber bei
+                 groesseren Projekten ist es besser, die
+                 Logik in script.js auszulagern (wie bei
+                 den anderen Beispielen auf der Startseite).
+                 ============================================= -->
+            <button class="demo-button" id="demo-btn">
+                Klick mich!
+            </button>
+            <div class="click-counter" id="click-output"></div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer>
+        <span>&copy; 2026 Dein Name</span>
+        <a href="https://github.com/NikosCHMBR" target="_blank">GitHub</a>
+    </footer>
+
+    <!-- Dieselbe externe JS-Datei wie auf der Startseite -->
+    <script src="script.js"></script>
+
+    <!-- =============================================
+         SEITEN-SPEZIFISCHES JAVASCRIPT
+         Genau wie beim CSS oben: Wenn du Logik brauchst,
+         die nur auf DIESER Seite laufen soll, kannst du
+         sie in einem extra <script>-Block schreiben.
+         
+         Alternativ koenntest du eine eigene Datei
+         "game.js" erstellen und hier einbinden.
+         ============================================= -->
+    <script>
+        // Einfacher Klick-Zaehler als Demonstration
+        const button = document.getElementById("demo-btn");
+        const output = document.getElementById("click-output");
+        let clickCount = 0;
+
+        button.addEventListener("click", function () {
+            clickCount++;
+
+            if (clickCount === 1) {
+                output.textContent = "1 Klick — es funktioniert!";
+            } else if (clickCount < 10) {
+                output.textContent = clickCount + " Klicks — weiter so!";
+            } else if (clickCount < 25) {
+                output.textContent = clickCount + " Klicks — du bist fleissig!";
+            } else {
+                output.textContent = clickCount + " Klicks — okay, du kannst aufhoeren 😄";
+            }
+        });
+    </script>
+</body>
+</html>
