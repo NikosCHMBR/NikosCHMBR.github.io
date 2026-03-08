@@ -1,0 +1,403 @@
+/* ==============================================
+   STYLE.CSS — Das zentrale Stylesheet deiner Seite
+   ================================================
+   
+   Diese Datei kontrolliert das gesamte Aussehen
+   deiner Website. Sie wird von jeder HTML-Seite
+   eingebunden, die diesen Stil verwenden soll:
+   
+       <link rel="stylesheet" href="style.css">
+   
+   VORTEIL: Wenn du hier eine Farbe aenderst, aendert
+   sie sich auf ALLEN Seiten gleichzeitig. Du musst
+   nicht jede HTML-Datei einzeln anfassen.
+   ================================================ */
+
+
+/* ==============================================
+   CSS-VARIABLEN
+   ================================================
+   Definiere Farben einmal, benutze sie ueberall.
+   Um das Farbschema deiner ganzen Seite zu aendern,
+   musst du nur diese Werte hier anpassen.
+   
+   Verwendung im Code: color: var(--accent);
+   ================================================ */
+:root {
+    --bg: #0e0e12;
+    --text: #e8e6e1;
+    --accent: #5eead4;
+    --accent-dim: #2dd4a820;
+    --card-bg: #16161d;
+    --card-border: #2a2a35;
+    --subtle: #6b6b7b;
+}
+
+
+/* ==============================================
+   GRUNDEINSTELLUNGEN (RESET)
+   ================================================
+   Jeder Browser hat eigene Standard-Abstände.
+   Dieses Reset sorgt dafuer, dass deine Seite
+   ueberall gleich aussieht.
+   ================================================ */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Sora', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.7;
+    min-height: 100vh;
+    overflow-x: hidden;
+}
+
+
+/* ==============================================
+   HINTERGRUND-EFFEKT
+   ================================================
+   Ein dezenter, sich langsam bewegender Farbverlauf
+   hinter dem gesamten Seiteninhalt. Rein dekorativ.
+   Kannst du entfernen, wenn du es schlichter willst.
+   ================================================ */
+body::before {
+    content: '';
+    position: fixed;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(ellipse at 30% 20%, #5eead410 0%, transparent 50%),
+                radial-gradient(ellipse at 70% 80%, #818cf810 0%, transparent 50%);
+    z-index: -1;
+    animation: drift 20s ease-in-out infinite alternate;
+}
+
+@keyframes drift {
+    from { transform: translate(0, 0) rotate(0deg); }
+    to { transform: translate(30px, -20px) rotate(3deg); }
+}
+
+
+/* ==============================================
+   NAVIGATION
+   ================================================
+   Die Navigationsleiste ist "fixed" — sie bleibt
+   oben stehen, auch wenn der Nutzer scrollt.
+   "backdrop-filter: blur" erzeugt den Glaseffekt.
+   ================================================ */
+nav {
+    position: fixed;
+    top: 0;
+    width: 100%;
+    padding: 1.2rem 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #0e0e12cc;
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--card-border);
+    z-index: 100;
+}
+
+.logo {
+    font-family: 'Space Mono', monospace;
+    font-weight: 700;
+    font-size: 1.1rem;
+    color: var(--accent);
+    letter-spacing: -0.5px;
+}
+
+.nav-links {
+    display: flex;
+    gap: 2rem;
+    list-style: none;
+}
+
+.nav-links a {
+    color: var(--subtle);
+    text-decoration: none;
+    font-size: 0.85rem;
+    font-weight: 400;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    transition: color 0.3s;
+}
+
+.nav-links a:hover {
+    color: var(--accent);
+}
+
+/* Spezieller Stil fuer den "Spiel"-Link in der Navigation */
+.nav-game-link {
+    color: var(--accent) !important;
+    font-weight: 600 !important;
+}
+
+
+/* ==============================================
+   HERO-BEREICH (Startseite, erster Eindruck)
+   ================================================
+   Der grosse Begrüssungsbereich, den Besucher
+   zuerst sehen. "min-height: 100vh" bedeutet,
+   dass er mindestens so hoch ist wie das Fenster.
+   ================================================ */
+.hero {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 6rem 2rem 4rem;
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+.hero .greeting {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.9rem;
+    color: var(--accent);
+    margin-bottom: 1rem;
+    opacity: 0;
+    animation: fadeUp 0.6s ease forwards 0.2s;
+}
+
+.hero h1 {
+    font-size: clamp(2.5rem, 6vw, 4.5rem);
+    font-weight: 700;
+    line-height: 1.1;
+    margin-bottom: 1.5rem;
+    opacity: 0;
+    animation: fadeUp 0.6s ease forwards 0.4s;
+}
+
+.hero h1 .highlight {
+    color: var(--accent);
+}
+
+.hero .subtitle {
+    font-size: 1.15rem;
+    color: var(--subtle);
+    max-width: 550px;
+    font-weight: 300;
+    opacity: 0;
+    animation: fadeUp 0.6s ease forwards 0.6s;
+}
+
+/* Einblende-Animation: Element gleitet von unten rein */
+@keyframes fadeUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+
+/* ==============================================
+   SEKTIONEN (wiederverwendbar)
+   ================================================
+   Jeder <section>-Block bekommt automatisch
+   diese Abstände und maximale Breite.
+   ================================================ */
+section {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 4rem 2rem;
+}
+
+section h2 {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--accent);
+    margin-bottom: 2rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--card-border);
+}
+
+
+/* ==============================================
+   KARTEN-GRID
+   ================================================
+   "auto-fit" sorgt dafuer, dass sich die Karten
+   automatisch an die Bildschirmbreite anpassen.
+   Auf einem schmalen Handy stehen sie untereinander,
+   auf einem breiten Bildschirm nebeneinander.
+   ================================================ */
+.card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 1.2rem;
+}
+
+.card {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 12px;
+    padding: 1.8rem;
+    transition: transform 0.3s, border-color 0.3s, box-shadow 0.3s;
+}
+
+.card:hover {
+    transform: translateY(-4px);
+    border-color: var(--accent);
+    box-shadow: 0 8px 30px var(--accent-dim);
+}
+
+.card .icon {
+    font-size: 1.8rem;
+    margin-bottom: 0.8rem;
+}
+
+.card h3 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+.card p {
+    font-size: 0.9rem;
+    color: var(--subtle);
+    font-weight: 300;
+}
+
+/* Wenn eine Karte gleichzeitig ein Link ist (<a class="card">) */
+.card-link {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+    cursor: pointer;
+}
+
+
+/* ==============================================
+   UEBER-MICH BEREICH
+   ================================================ */
+.about-content {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+    align-items: start;
+}
+
+.about-text p {
+    color: var(--subtle);
+    font-weight: 300;
+    margin-bottom: 1rem;
+}
+
+.fact-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+}
+
+.fact {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 8px;
+    padding: 1rem 1.2rem;
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.9rem;
+}
+
+.fact .label {
+    color: var(--subtle);
+}
+
+.fact .value {
+    color: var(--accent);
+    font-family: 'Space Mono', monospace;
+    font-size: 0.85rem;
+}
+
+
+/* ==============================================
+   FOOTER
+   ================================================ */
+footer {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 3rem 2rem;
+    border-top: 1px solid var(--card-border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.8rem;
+    color: var(--subtle);
+}
+
+footer a {
+    color: var(--accent);
+    text-decoration: none;
+}
+
+
+/* ==============================================
+   ZURUECK-LINK (fuer Unterseiten wie game.html)
+   ================================================ */
+.back-link {
+    display: inline-block;
+    color: var(--accent);
+    text-decoration: none;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.85rem;
+    margin-bottom: 2rem;
+    transition: opacity 0.3s;
+}
+
+.back-link:hover {
+    opacity: 0.7;
+}
+
+
+/* ==============================================
+   SEITEN-CONTAINER (fuer Unterseiten)
+   ================================================
+   Einfacher zentrierter Container mit Abstand
+   nach oben (wegen der fixen Navigation).
+   ================================================ */
+.page-container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 7rem 2rem 4rem;
+}
+
+.page-container h1 {
+    font-size: 2rem;
+    margin-bottom: 1rem;
+}
+
+.page-container p {
+    color: var(--subtle);
+    font-weight: 300;
+}
+
+
+/* ==============================================
+   RESPONSIVE DESIGN
+   ================================================
+   @media-Regeln passen das Layout an kleinere
+   Bildschirme an (z.B. Smartphones).
+   640px ist ein gaengiger Breakpoint.
+   ================================================ */
+@media (max-width: 640px) {
+    .nav-links {
+        gap: 1rem;
+    }
+    .about-content {
+        grid-template-columns: 1fr;
+    }
+    nav {
+        padding: 1rem;
+    }
+}
