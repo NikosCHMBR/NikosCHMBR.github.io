@@ -4,285 +4,43 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Meine Seite</title>
+
+    <!-- =============================================
+         EXTERNE SCHRIFTARTEN
+         Google Fonts laedt die Schriften von einem
+         externen Server. Das ist ein Link, kein Download.
+         ============================================= -->
     <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
-    <style>
-        /* ============================================
-           DEIN PERSOENLICHES STARTER-TEMPLATE
-           Alles hier kannst du frei veraendern!
-           ============================================ */
 
-        /* -- Farben & Grundeinstellungen -- */
-        :root {
-            --bg: #0e0e12;
-            --text: #e8e6e1;
-            --accent: #5eead4;
-            --accent-dim: #2dd4a820;
-            --card-bg: #16161d;
-            --card-border: #2a2a35;
-            --subtle: #6b6b7b;
-        }
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Sora', sans-serif;
-            background: var(--bg);
-            color: var(--text);
-            line-height: 1.7;
-            min-height: 100vh;
-            overflow-x: hidden;
-        }
-
-        /* -- Hintergrund-Effekt -- */
-        body::before {
-            content: '';
-            position: fixed;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: radial-gradient(ellipse at 30% 20%, #5eead410 0%, transparent 50%),
-                        radial-gradient(ellipse at 70% 80%, #818cf810 0%, transparent 50%);
-            z-index: -1;
-            animation: drift 20s ease-in-out infinite alternate;
-        }
-
-        @keyframes drift {
-            from { transform: translate(0, 0) rotate(0deg); }
-            to { transform: translate(30px, -20px) rotate(3deg); }
-        }
-
-        /* -- Navigation -- */
-        nav {
-            position: fixed;
-            top: 0;
-            width: 100%;
-            padding: 1.2rem 2rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: #0e0e12cc;
-            backdrop-filter: blur(12px);
-            border-bottom: 1px solid var(--card-border);
-            z-index: 100;
-        }
-
-        .logo {
-            font-family: 'Space Mono', monospace;
-            font-weight: 700;
-            font-size: 1.1rem;
-            color: var(--accent);
-            letter-spacing: -0.5px;
-        }
-
-        .nav-links {
-            display: flex;
-            gap: 2rem;
-            list-style: none;
-        }
-
-        .nav-links a {
-            color: var(--subtle);
-            text-decoration: none;
-            font-size: 0.85rem;
-            font-weight: 400;
-            letter-spacing: 0.5px;
-            text-transform: uppercase;
-            transition: color 0.3s;
-        }
-
-        .nav-links a:hover {
-            color: var(--accent);
-        }
-
-        /* -- Hero-Bereich -- */
-        .hero {
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            padding: 6rem 2rem 4rem;
-            max-width: 900px;
-            margin: 0 auto;
-        }
-
-        .hero .greeting {
-            font-family: 'Space Mono', monospace;
-            font-size: 0.9rem;
-            color: var(--accent);
-            margin-bottom: 1rem;
-            opacity: 0;
-            animation: fadeUp 0.6s ease forwards 0.2s;
-        }
-
-        .hero h1 {
-            font-size: clamp(2.5rem, 6vw, 4.5rem);
-            font-weight: 700;
-            line-height: 1.1;
-            margin-bottom: 1.5rem;
-            opacity: 0;
-            animation: fadeUp 0.6s ease forwards 0.4s;
-        }
-
-        .hero h1 .highlight {
-            color: var(--accent);
-        }
-
-        .hero .subtitle {
-            font-size: 1.15rem;
-            color: var(--subtle);
-            max-width: 550px;
-            font-weight: 300;
-            opacity: 0;
-            animation: fadeUp 0.6s ease forwards 0.6s;
-        }
-
-        @keyframes fadeUp {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        /* -- Sektionen -- */
-        section {
-            max-width: 900px;
-            margin: 0 auto;
-            padding: 4rem 2rem;
-        }
-
-        section h2 {
-            font-family: 'Space Mono', monospace;
-            font-size: 0.8rem;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            color: var(--accent);
-            margin-bottom: 2rem;
-            padding-bottom: 0.5rem;
-            border-bottom: 1px solid var(--card-border);
-        }
-
-        /* -- Karten-Grid -- */
-        .card-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-            gap: 1.2rem;
-        }
-
-        .card {
-            background: var(--card-bg);
-            border: 1px solid var(--card-border);
-            border-radius: 12px;
-            padding: 1.8rem;
-            transition: transform 0.3s, border-color 0.3s, box-shadow 0.3s;
-        }
-
-        .card:hover {
-            transform: translateY(-4px);
-            border-color: var(--accent);
-            box-shadow: 0 8px 30px var(--accent-dim);
-        }
-
-        .card .icon {
-            font-size: 1.8rem;
-            margin-bottom: 0.8rem;
-        }
-
-        .card h3 {
-            font-size: 1.1rem;
-            font-weight: 600;
-            margin-bottom: 0.5rem;
-        }
-
-        .card p {
-            font-size: 0.9rem;
-            color: var(--subtle);
-            font-weight: 300;
-        }
-
-        /* -- Ueber-mich Bereich -- */
-        .about-content {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 2rem;
-            align-items: start;
-        }
-
-        .about-text p {
-            color: var(--subtle);
-            font-weight: 300;
-            margin-bottom: 1rem;
-        }
-
-        .fact-list {
-            display: flex;
-            flex-direction: column;
-            gap: 0.8rem;
-        }
-
-        .fact {
-            background: var(--card-bg);
-            border: 1px solid var(--card-border);
-            border-radius: 8px;
-            padding: 1rem 1.2rem;
-            display: flex;
-            justify-content: space-between;
-            font-size: 0.9rem;
-        }
-
-        .fact .label {
-            color: var(--subtle);
-        }
-
-        .fact .value {
-            color: var(--accent);
-            font-family: 'Space Mono', monospace;
-            font-size: 0.85rem;
-        }
-
-        /* -- Footer -- */
-        footer {
-            max-width: 900px;
-            margin: 0 auto;
-            padding: 3rem 2rem;
-            border-top: 1px solid var(--card-border);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-size: 0.8rem;
-            color: var(--subtle);
-        }
-
-        footer a {
-            color: var(--accent);
-            text-decoration: none;
-        }
-
-        /* -- Responsive -- */
-        @media (max-width: 640px) {
-            .nav-links { gap: 1rem; }
-            .about-content { grid-template-columns: 1fr; }
-            nav { padding: 1rem; }
-        }
-    </style>
+    <!-- =============================================
+         EXTERNE CSS-DATEI
+         Hier wird die Datei "style.css" eingebunden.
+         Der Browser laedt sie automatisch und wendet
+         alle Styles auf diese Seite an.
+         
+         href="style.css" bedeutet: Die Datei liegt im
+         selben Ordner wie diese HTML-Datei.
+         ============================================= -->
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-    <!-- Navigation -->
+    <!-- =============================================
+         NAVIGATION
+         Jeder Link verweist auf eine Stelle auf dieser
+         Seite (z.B. #start) oder auf eine andere Datei
+         (z.B. game.html).
+         
+         - href="#start"     = springt zum Element mit id="start" auf DIESER Seite
+         - href="game.html"  = oeffnet eine ANDERE HTML-Datei
+         ============================================= -->
     <nav>
         <div class="logo">// dein_name</div>
         <ul class="nav-links">
             <li><a href="#start">Start</a></li>
             <li><a href="#projekte">Projekte</a></li>
             <li><a href="#ueber">Über mich</a></li>
+            <li><a href="game.html" class="nav-game-link">Spiel</a></li>
         </ul>
     </nav>
 
@@ -303,16 +61,24 @@
     <section id="projekte">
         <h2>// Projekte</h2>
         <div class="card-grid">
-            <div class="card">
+
+            <!-- =============================================
+                 VERLINKUNG ZU EINER ANDEREN SEITE
+                 Diese Karte ist klickbar und fuehrt zu game.html.
+                 Das <a>-Tag umschliesst die ganze Karte.
+                 ============================================= -->
+            <a href="game.html" class="card card-link">
                 <div class="icon">🎮</div>
                 <h3>Mein Spiel</h3>
-                <p>Ein kleines 2D-Metroidvania, direkt im Browser spielbar. Kommt bald!</p>
-            </div>
+                <p>Ein kleines 2D-Spiel, direkt im Browser spielbar. Klick hier!</p>
+            </a>
+
             <div class="card">
                 <div class="icon">🛠️</div>
                 <h3>Diese Website</h3>
                 <p>Von Grund auf selbst gebaut mit HTML, CSS und JavaScript.</p>
             </div>
+
             <div class="card">
                 <div class="icon">💡</div>
                 <h3>Was kommt noch?</h3>
@@ -355,8 +121,20 @@
     <!-- Footer -->
     <footer>
         <span>&copy; 2026 Dein Name</span>
-        <a href="https://github.com/deinbenutzername" target="_blank">GitHub</a>
+        <a href="https://github.com/NikosCHMBR" target="_blank">GitHub</a>
     </footer>
 
+    <!-- =============================================
+         EXTERNE JAVASCRIPT-DATEI
+         Diese Zeile laedt "script.js" und fuehrt den
+         Code darin aus.
+         
+         WICHTIG: Das <script>-Tag steht am ENDE des <body>,
+         damit der Browser zuerst die ganze Seite aufbaut
+         und erst danach das JavaScript ausfuehrt.
+         Wuerde es im <head> stehen, koennte das Script
+         die HTML-Elemente noch nicht finden.
+         ============================================= -->
+    <script src="script.js"></script>
 </body>
 </html>
