@@ -124,3 +124,63 @@ elementsToAnimate.forEach(function (element) {
    ================================================ */
 console.log("script.js wurde geladen!");
 console.log("Oeffne diese Konsole mit F12, um Meldungen zu sehen.");
+
+
+/* ==============================================
+   SCHEUER BUTTON — weicht der Maus aus
+   ================================================
+   Jedes Element mit class="shy-button" springt an
+   eine zufaellige Position, sobald die Maus es
+   beruehrt. Wiederverwendbare Klasse: Du kannst
+   beliebig viele shy-buttons auf jeder Seite haben.
+   
+   VERWENDUNG IM HTML:
+   
+       <button class="shy-button">Fang mich!</button>
+   
+   Der Button braucht KEIN inline style="position:..."
+   mehr — das setzt dieses Script automatisch.
+   Fuer den sanften Gleiteffekt sorgt die CSS-Regel
+   in style.css (transition auf left und top).
+   
+   HINWEIS ZU MOBILEN GERAETEN:
+   Touchscreens haben kein "mouseover", deshalb
+   reagiert der Button dort auch auf "touchstart".
+   ================================================ */
+const shyButtons = document.querySelectorAll(".shy-button");
+
+if (shyButtons.length > 0) {
+
+    // Hilfsfunktion: berechnet eine zufaellige Position
+    // innerhalb des sichtbaren Fensters und setzt sie
+    function moveButtonAway(button) {
+        const maxX = window.innerWidth - button.offsetWidth - 20;
+        const maxY = window.innerHeight - button.offsetHeight - 20;
+
+        const randomX = Math.max(10, Math.floor(Math.random() * maxX));
+        const randomY = Math.max(10, Math.floor(Math.random() * maxY));
+
+        button.style.left = randomX + "px";
+        button.style.top = randomY + "px";
+    }
+
+    // Jeden shy-button einrichten
+    shyButtons.forEach(function (button) {
+        // Position automatisch auf "fixed" setzen, damit
+        // der Button frei im Fenster positioniert werden kann.
+        // "fixed" statt "absolute" sorgt dafuer, dass der
+        // Button auch beim Scrollen im sichtbaren Bereich bleibt.
+        button.style.position = "fixed";
+
+        // Maus-Ereignis (Desktop)
+        button.addEventListener("mouseover", function () {
+            moveButtonAway(button);
+        });
+
+        // Touch-Ereignis (Handy/Tablet)
+        button.addEventListener("touchstart", function (event) {
+            event.preventDefault();
+            moveButtonAway(button);
+        });
+    });
+}
