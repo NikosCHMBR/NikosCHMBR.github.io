@@ -10,6 +10,7 @@
             height: 100vh;
             background-color: black;
             display: flex;
+            flex-direction: column;
             justify-content: center;
             align-items: center;
         }
@@ -17,9 +18,32 @@
             color: red;
             font-size: 4rem;
         }
+        .options {
+            display: flex;
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+        .options a {
+            display: block;
+            padding: 1rem 2rem;
+            background-color: #222;
+            color: white;
+            text-decoration: none;
+            font-size: 1.5rem;
+            border: 2px solid red;
+            border-radius: 8px;
+            transition: background-color 0.3s;
+        }
+        .options a:hover {
+            background-color: #550000;
+        }
     </style>
 </head>
 <body>
     <h1>DREH UM</h1>
+    <div class="options">
+        <a href="seite1.html">Option A</a>
+        <a href="seite2.html">Option B</a>
+    </div>
 </body>
 </html>
