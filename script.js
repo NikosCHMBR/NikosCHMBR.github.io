@@ -80,7 +80,7 @@ document.querySelectorAll('a[href^="#"]').forEach(function (link) {
    3. Sobald es im Sichtfeld auftaucht, wird es
       sichtbar (opacity: 1, zurueck an Originalposition)
    ================================================ */
-const elementsToAnimate = document.querySelectorAll(".card, section h2");
+const elementsToAnimate = document.querySelectorAll(".card:not(.shy-button), section h2");
 
 // Startzustand: unsichtbar und leicht nach unten verschoben
 elementsToAnimate.forEach(function (element) {
