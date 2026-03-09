@@ -134,25 +134,44 @@ console.log("Oeffne diese Konsole mit F12, um Meldungen zu sehen.");
    beruehrt. Wiederverwendbare Klasse: Du kannst
    beliebig viele shy-buttons auf jeder Seite haben.
    
-   VERWENDUNG IM HTML:
+   VERWENDUNG IM HTML (z.B. als Karte):
    
-       <button class="shy-button">Fang mich!</button>
+       <div class="card shy-button">
+           <div class="icon">🎮</div>
+           <h3>Fang mich!</h3>
+           <p>Diese Karte weicht dir aus.</p>
+       </div>
    
-   Der Button braucht KEIN inline style="position:..."
-   mehr — das setzt dieses Script automatisch.
-   Fuer den sanften Gleiteffekt sorgt die CSS-Regel
-   in style.css (transition auf left und top).
+   VERHALTEN:
+   Das Element sitzt zunaechst ganz normal im Layout
+   (z.B. im Card-Grid). Erst beim ersten Maus-Kontakt
+   wird es herausgeloest und schwebt frei davon.
    
-   HINWEIS ZU MOBILEN GERAETEN:
-   Touchscreens haben kein "mouseover", deshalb
-   reagiert der Button dort auch auf "touchstart".
+   So funktioniert das technisch:
+   1. Beim Laden passiert NICHTS — das Element bleibt
+      wo es ist (im Grid, im Flow, ueberall).
+   2. Beim ersten "mouseover" merkt sich das Script
+      die aktuelle Bildschirmposition des Elements
+      (mit getBoundingClientRect).
+   3. Dann setzt es "position: fixed" und platziert
+      das Element exakt an derselben Stelle — visuell
+      aendert sich also erstmal nichts.
+   4. Sofort danach wird es an eine zufaellige neue
+      Position verschoben. Die CSS-Transition sorgt
+      fuer das sanfte Gleiten.
+   5. Ab jetzt schwebt es bei jedem weiteren Kontakt
+      an eine neue zufaellige Position.
+   
+   HINWEIS: Sobald das Element "position: fixed" hat,
+   ist es aus dem normalen Layout herausgeloest.
+   Im Grid ruecken die anderen Elemente nach.
    ================================================ */
 const shyButtons = document.querySelectorAll(".shy-button");
 
 if (shyButtons.length > 0) {
 
     // Hilfsfunktion: berechnet eine zufaellige Position
-    // innerhalb des sichtbaren Fensters und setzt sie
+    // innerhalb des sichtbaren Fensters
     function moveButtonAway(button) {
         const maxX = window.innerWidth - button.offsetWidth - 20;
         const maxY = window.innerHeight - button.offsetHeight - 20;
@@ -164,23 +183,54 @@ if (shyButtons.length > 0) {
         button.style.top = randomY + "px";
     }
 
+    // Hilfsfunktion: loest das Element beim ersten Kontakt
+    // aus dem Layout heraus und setzt es auf "fixed"
+    function detachAndFlee(button) {
+        // Nur beim allerersten Mal ausfuehren
+        if (button.dataset.detached === "true") {
+            // Bereits herausgeloest — einfach wegbewegen
+            moveButtonAway(button);
+            return;
+        }
+
+        // Aktuelle Position auf dem Bildschirm merken
+        // (dort wo das Element gerade sichtbar ist)
+        const rect = button.getBoundingClientRect();
+
+        // Breite und Hoehe fixieren, damit die Karte
+        // ihre Groesse behaelt wenn sie das Grid verlaesst
+        button.style.width = rect.width + "px";
+        button.style.height = rect.height + "px";
+
+        // Auf "fixed" umschalten und an exakt dieselbe
+        // Stelle setzen — visuell aendert sich kurz nichts
+        button.style.position = "fixed";
+        button.style.top = rect.top + "px";
+        button.style.left = rect.left + "px";
+
+        // Markieren, dass dieses Element jetzt frei schwebt
+        button.dataset.detached = "true";
+
+        // Kurze Verzoegerung, damit der Browser die neue
+        // Position registriert BEVOR die Animation startet.
+        // Ohne das wuerde der Uebergang nicht sichtbar sein.
+        setTimeout(function () {
+            moveButtonAway(button);
+        }, 50);
+    }
+
     // Jeden shy-button einrichten
     shyButtons.forEach(function (button) {
-        // Position automatisch auf "fixed" setzen, damit
-        // der Button frei im Fenster positioniert werden kann.
-        // "fixed" statt "absolute" sorgt dafuer, dass der
-        // Button auch beim Scrollen im sichtbaren Bereich bleibt.
-        button.style.position = "fixed";
 
         // Maus-Ereignis (Desktop)
         button.addEventListener("mouseover", function () {
-            moveButtonAway(button);
+            detachAndFlee(button);
         });
 
         // Touch-Ereignis (Handy/Tablet)
         button.addEventListener("touchstart", function (event) {
             event.preventDefault();
-            moveButtonAway(button);
+            detachAndFlee(button);
         });
     });
 }
