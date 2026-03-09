@@ -382,6 +382,11 @@ footer a {
     font-weight: 300;
 }
 
+/* Scheuer Button: sanftes Gleiten statt hartem Springen */
+.shy-button {
+    transition: left 0.3s ease, top 0.3s ease;
+    z-index: 50;
+}
 
 /* ==============================================
    RESPONSIVE DESIGN
