@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Platformer Prototype</title>
+<title>Platformer</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
@@ -41,13 +41,11 @@
 
 <script>
 // ============================================================
-//  CONFIGURATION
+//  CONFIGURATION (engine constants — never change per level)
 // ============================================================
 const CONFIG = {
   VIEW_W: 1280,
   VIEW_H: 720,
-  ARENA_W: 2400,
-  ARENA_H: 720,
 
   GRAVITY: 0.55,
   TERMINAL_VELOCITY: 12,
@@ -75,28 +73,15 @@ const CONFIG = {
   HIT_COOLDOWN: 18,
   HIT_KNOCKBACK: 1.8,
 
-  DOT_BOUNCE: -5.3,          // bounce for red/white/spike downward-hit
-
+  DOT_BOUNCE: -5.3,
   GHOST_DURATION: 120,
-
   ORB_RADIUS: 8,
   ORB_RESPAWN_TIME: 300,
-
   MAX_AIR_CHARGES: 1,
-
-  // Health
   MAX_HP: 3,
-  INVINCIBILITY_FRAMES: 90,   // 1.5 seconds after taking damage
+  INVINCIBILITY_FRAMES: 90,
 
-  // Spawn point (main room)
-  SPAWN_X: 900,
-  SPAWN_Y: 720 - 40 - 32,     // ARENA_H - ground height - player height
-
-  // Spikes
-  SPIKE_X: 730,                // centered on x=800 boundary
-  SPIKE_W: 140,
-  SPIKE_H: 18,                 // collision height above ground
-  SPIKE_TRIANGLE_H: 16,        // visual triangle height
+  SPIKE_TRIANGLE_H: 16,
 
   // Colors
   BG_COLOR: '#0f1019',
@@ -118,6 +103,88 @@ const CONFIG = {
 };
 
 // ============================================================
+//  LEVEL DATA
+//  Each level defines: arenaW, spawnX, spawnY, platforms,
+//  orbs (array of {x, y, type}), spikeZones (array of {x, w, h})
+//  type: 'black' | 'red' | 'white'
+// ============================================================
+function makeDefaultLevel() {
+  const AH = CONFIG.VIEW_H; // 720
+  return {
+    arenaW: 2400,
+    spawnX: 900,
+    spawnY: AH - 40 - CONFIG.PLAYER_H,
+    platforms: [
+      { x: 0, y: AH - 40, w: 2400, h: 40, isGround: true },
+
+      // Left room (0–800)
+      { x: 80,  y: 380, w: 130, h: 16, ghostable: true },
+      { x: 260, y: 330, w: 120, h: 16 },
+      { x: 440, y: 280, w: 110, h: 16, ghostable: true },
+      { x: 620, y: 350, w: 120, h: 16 },
+      { x: 140, y: 220, w: 100, h: 16 },
+      { x: 350, y: 180, w: 120, h: 16, ghostable: true },
+      { x: 540, y: 150, w: 100, h: 16 },
+      { x: 60,  y: 130, w: 80,  h: 16, ghostable: true },
+      { x: 680, y: 200, w: 90,  h: 16 },
+
+      // Main room (800–1600)
+      { x: 880,  y: 380, w: 140, h: 16 },
+      { x: 1080, y: 320, w: 120, h: 16, ghostable: true },
+      { x: 1260, y: 280, w: 100, h: 16 },
+      { x: 1420, y: 340, w: 130, h: 16, ghostable: true },
+      { x: 950,  y: 220, w: 110, h: 16, ghostable: true },
+      { x: 1140, y: 180, w: 130, h: 16 },
+      { x: 1350, y: 160, w: 100, h: 16, ghostable: true },
+      { x: 850,  y: 120, w: 90,  h: 16 },
+      { x: 1500, y: 200, w: 80,  h: 16, ghostable: true },
+
+      // Ghostable wall (Main ↔ Right)
+      { x: 1584, y: 0, w: 16, h: AH - 40, ghostable: true },
+
+      // Right room (1600–2400)
+      { x: 1680, y: 380, w: 140, h: 16, ghostable: true },
+      { x: 1860, y: 320, w: 120, h: 16 },
+      { x: 2040, y: 280, w: 100, h: 16, ghostable: true },
+      { x: 2200, y: 340, w: 130, h: 16 },
+      { x: 1720, y: 220, w: 110, h: 16 },
+      { x: 1900, y: 180, w: 130, h: 16, ghostable: true },
+      { x: 2120, y: 160, w: 100, h: 16 },
+      { x: 1650, y: 120, w: 90,  h: 16, ghostable: true },
+      { x: 2280, y: 200, w: 80,  h: 16 },
+
+      // Outer walls
+      { x: 0, y: 0, w: 16, h: AH - 40 },
+      { x: 2400 - 16, y: 0, w: 16, h: AH - 40 },
+    ],
+    orbs: [
+      { x: 1200, y: 80,  type: 'black' },
+      { x: 1400, y: 100, type: 'red' },
+      { x: 1560, y: 100, type: 'white' },
+      { x: 1624, y: 100, type: 'white' },
+    ],
+    spikeZones: [
+      { x: 730, w: 140, h: 18 },
+    ],
+  };
+}
+
+// Build 20 levels — all identical for now, ready to customize
+const LEVELS = [];
+for (let i = 0; i < 20; i++) {
+  LEVELS.push(makeDefaultLevel());
+}
+
+// ============================================================
+//  ACTIVE LEVEL STATE (mutable — swapped by loadLevel)
+// ============================================================
+let currentLevel = 0;
+let arenaW = 2400;
+let platforms = [];
+let spikeList = [];  // array of {x, y, w, h} (computed from spikeZones)
+let orbObjects = []; // array of {x, y, radius, active, respawnTimer, type}
+
+// ============================================================
 //  CANVAS
 // ============================================================
 const canvas = document.getElementById('gameCanvas');
@@ -134,7 +201,7 @@ function updateCamera() {
   const target = player.x + player.w / 2 - CONFIG.VIEW_W / 2;
   camera.x += (target - camera.x) * 0.12;
   if (camera.x < 0) camera.x = 0;
-  if (camera.x > CONFIG.ARENA_W - CONFIG.VIEW_W) camera.x = CONFIG.ARENA_W - CONFIG.VIEW_W;
+  if (camera.x > arenaW - CONFIG.VIEW_W) camera.x = arenaW - CONFIG.VIEW_W;
 }
 
 // ============================================================
@@ -164,149 +231,90 @@ window.addEventListener('keyup', (e) => {
 });
 
 // ============================================================
-//  PLATFORMS
-//  Rooms: Left 0-800 | Main 800-1600 | Right 1600-2400
-// ============================================================
-const platforms = [
-  // === GROUND (full width, never ghostable) ===
-  { x: 0, y: CONFIG.ARENA_H - 40, w: CONFIG.ARENA_W, h: 40, isGround: true },
-
-  // === LEFT ROOM (0–800) — new room ===
-  { x: 80,  y: 380, w: 130, h: 16, ghostable: true },
-  { x: 260, y: 330, w: 120, h: 16 },
-  { x: 440, y: 280, w: 110, h: 16, ghostable: true },
-  { x: 620, y: 350, w: 120, h: 16 },
-
-  { x: 140, y: 220, w: 100, h: 16 },
-  { x: 350, y: 180, w: 120, h: 16, ghostable: true },
-  { x: 540, y: 150, w: 100, h: 16 },
-
-  { x: 60,  y: 130, w: 80,  h: 16, ghostable: true },
-  { x: 680, y: 200, w: 90,  h: 16 },
-
-  // === MAIN ROOM (800–1600) — spawn room (original, shifted +800) ===
-  { x: 880,  y: 380, w: 140, h: 16 },
-  { x: 1080, y: 320, w: 120, h: 16, ghostable: true },
-  { x: 1260, y: 280, w: 100, h: 16 },
-  { x: 1420, y: 340, w: 130, h: 16, ghostable: true },
-
-  { x: 950,  y: 220, w: 110, h: 16, ghostable: true },
-  { x: 1140, y: 180, w: 130, h: 16 },
-  { x: 1350, y: 160, w: 100, h: 16, ghostable: true },
-
-  { x: 850,  y: 120, w: 90,  h: 16 },
-  { x: 1500, y: 200, w: 80,  h: 16, ghostable: true },
-
-  // === GHOSTABLE WALL (Main ↔ Right, shifted from 784 to 1584) ===
-  { x: 1584, y: 0, w: 16, h: CONFIG.ARENA_H - 40, ghostable: true },
-
-  // === RIGHT ROOM (1600–2400) — shifted +800 ===
-  { x: 1680, y: 380, w: 140, h: 16, ghostable: true },
-  { x: 1860, y: 320, w: 120, h: 16 },
-  { x: 2040, y: 280, w: 100, h: 16, ghostable: true },
-  { x: 2200, y: 340, w: 130, h: 16 },
-
-  { x: 1720, y: 220, w: 110, h: 16 },
-  { x: 1900, y: 180, w: 130, h: 16, ghostable: true },
-  { x: 2120, y: 160, w: 100, h: 16 },
-
-  { x: 1650, y: 120, w: 90,  h: 16, ghostable: true },
-  { x: 2280, y: 200, w: 80,  h: 16 },
-
-  // === OUTER WALLS (never ghostable) ===
-  { x: 0, y: 0, w: 16, h: CONFIG.ARENA_H - 40 },
-  { x: CONFIG.ARENA_W - 16, y: 0, w: 16, h: CONFIG.ARENA_H - 40 },
-];
-
-// ============================================================
-//  SPIKES — between left room and main room
-//  Centered on x=800 border. Sits on top of ground.
-// ============================================================
-const spikes = {
-  x: CONFIG.SPIKE_X,
-  y: CONFIG.ARENA_H - 40 - CONFIG.SPIKE_H,
-  w: CONFIG.SPIKE_W,
-  h: CONFIG.SPIKE_H,
-};
-
-// ============================================================
 //  PLAYER
 // ============================================================
 const player = {
-  x: CONFIG.SPAWN_X,
-  y: CONFIG.SPAWN_Y,
-  w: CONFIG.PLAYER_W,
-  h: CONFIG.PLAYER_H,
-  vx: 0,
-  vy: 0,
+  x: 0, y: 0,
+  w: CONFIG.PLAYER_W, h: CONFIG.PLAYER_H,
+  vx: 0, vy: 0,
   grounded: false,
   coyoteTimer: 0,
   jumpBufferTimer: 0,
   jumping: false,
   facingRight: true,
-
   airCharges: CONFIG.MAX_AIR_CHARGES,
-
-  dashTimer: 0,
-  dashCooldownTimer: 0,
-  dashDirX: 0,
-
-  hitActiveTimer: 0,
-  hitCooldownTimer: 0,
-  hitDir: 'right',
-  hitKnockbackDone: false,
-  hitSpikeBounceDone: false,  // prevent repeated spike bounce per hit
-
-  ghostTimer: 0,
-  safeX: CONFIG.SPAWN_X,
-  safeY: CONFIG.SPAWN_Y,
-
-  // Health
-  hp: CONFIG.MAX_HP,
-  invTimer: 0,                 // invincibility frames remaining
-
-  // Last grounded position (for spike damage teleport)
-  lastGroundedX: CONFIG.SPAWN_X,
-  lastGroundedY: CONFIG.SPAWN_Y,
-
-  // Visuals
-  squashX: 1,
-  squashY: 1,
-  landTimer: 0,
+  dashTimer: 0, dashCooldownTimer: 0, dashDirX: 0,
+  hitActiveTimer: 0, hitCooldownTimer: 0,
+  hitDir: 'right', hitKnockbackDone: false, hitSpikeBounceDone: false,
+  ghostTimer: 0, safeX: 0, safeY: 0,
+  hp: CONFIG.MAX_HP, invTimer: 0,
+  lastGroundedX: 0, lastGroundedY: 0,
+  squashX: 1, squashY: 1, landTimer: 0,
   dashTrails: [],
 };
 
-// ============================================================
-//  ORBS (positions shifted +800 for new layout)
-// ============================================================
-const blackOrb = {
-  x: 1200, y: 80,
-  radius: CONFIG.ORB_RADIUS, active: true, respawnTimer: 0,
-};
-const redOrb = {
-  x: 1400, y: 100,
-  radius: CONFIG.ORB_RADIUS, active: true, respawnTimer: 0,
-};
-// White orbs flank the ghostable wall at x=1584
-const whiteOrb1 = {
-  x: 1560, y: 100,
-  radius: CONFIG.ORB_RADIUS, active: true, respawnTimer: 0,
-};
-const whiteOrb2 = {
-  x: 1624, y: 100,
-  radius: CONFIG.ORB_RADIUS, active: true, respawnTimer: 0,
-};
+// Store spawn point for current level
+let spawnX = 0;
+let spawnY = 0;
 
-const allOrbs = [blackOrb, redOrb, whiteOrb1, whiteOrb2];
+// ============================================================
+//  LEVEL LOADING
+// ============================================================
+function loadLevel(n) {
+  if (n < 0 || n >= LEVELS.length) return;
+  currentLevel = n;
+  const lvl = LEVELS[n];
+
+  arenaW = lvl.arenaW;
+  spawnX = lvl.spawnX;
+  spawnY = lvl.spawnY;
+
+  // Copy platforms (fresh array each load)
+  platforms = lvl.platforms.map(p => ({ ...p }));
+
+  // Build spike collision rects from spikeZones
+  spikeList = lvl.spikeZones.map(sz => ({
+    x: sz.x,
+    y: CONFIG.VIEW_H - 40 - sz.h,
+    w: sz.w,
+    h: sz.h,
+  }));
+
+  // Build orb objects
+  orbObjects = lvl.orbs.map(o => ({
+    x: o.x,
+    y: o.y,
+    type: o.type,
+    radius: CONFIG.ORB_RADIUS,
+    active: true,
+    respawnTimer: 0,
+  }));
+
+  // Reset player
+  respawn();
+  camera.x = Math.max(0, Math.min(spawnX - CONFIG.VIEW_W / 2, arenaW - CONFIG.VIEW_W));
+
+  // Notify parent of level change
+  if (window.parent !== window) {
+    window.parent.postMessage({ type: 'levelLoaded', level: n }, '*');
+  }
+}
+
+// ============================================================
+//  LISTEN FOR LEVEL COMMANDS FROM PARENT
+// ============================================================
+window.addEventListener('message', (e) => {
+  if (e.data && e.data.type === 'loadLevel' && typeof e.data.level === 'number') {
+    loadLevel(e.data.level);
+  }
+});
 
 // ============================================================
 //  HELPERS
 // ============================================================
 function rectsOverlap(a, b) {
-  return a.x < b.x + b.w &&
-         a.x + a.w > b.x &&
-         a.y < b.y + b.h &&
-         a.y + a.h > b.y;
+  return a.x < b.x + b.w && a.x + a.w > b.x &&
+         a.y < b.y + b.h && a.y + a.h > b.y;
 }
 
 function orbToBox(o) {
@@ -327,8 +335,8 @@ function isInsideGhostable() {
 }
 
 function respawn() {
-  player.x = CONFIG.SPAWN_X;
-  player.y = CONFIG.SPAWN_Y;
+  player.x = spawnX;
+  player.y = spawnY;
   player.vx = 0;
   player.vy = 0;
   player.hp = CONFIG.MAX_HP;
@@ -341,23 +349,22 @@ function respawn() {
   player.hitCooldownTimer = 0;
   player.grounded = false;
   player.jumping = false;
-  player.lastGroundedX = CONFIG.SPAWN_X;
-  player.lastGroundedY = CONFIG.SPAWN_Y;
-  player.safeX = CONFIG.SPAWN_X;
-  player.safeY = CONFIG.SPAWN_Y;
+  player.lastGroundedX = spawnX;
+  player.lastGroundedY = spawnY;
+  player.safeX = spawnX;
+  player.safeY = spawnY;
   player.squashX = 1;
   player.squashY = 1;
   player.dashTrails = [];
 }
 
 function takeDamage() {
-  if (player.invTimer > 0) return; // still invincible
+  if (player.invTimer > 0) return;
   player.hp--;
   if (player.hp <= 0) {
     respawn();
     return;
   }
-  // Teleport to last grounded position
   player.x = player.lastGroundedX;
   player.y = player.lastGroundedY;
   player.vx = 0;
@@ -367,7 +374,7 @@ function takeDamage() {
 }
 
 // ============================================================
-//  COLLISION — AABB (respects ghosting)
+//  COLLISION
 // ============================================================
 function resolveCollisions() {
   player.grounded = false;
@@ -393,11 +400,7 @@ function resolveCollisions() {
     if (!rectsOverlap(player, plat)) continue;
     if (player.vy > 0) {
       player.y = plat.y - player.h;
-      if (player.vy > 4) {
-        player.squashX = 1.3;
-        player.squashY = 0.7;
-        player.landTimer = 8;
-      }
+      if (player.vy > 4) { player.squashX = 1.3; player.squashY = 0.7; player.landTimer = 8; }
       player.vy = 0;
       player.grounded = true;
       player.jumping = false;
@@ -409,20 +412,16 @@ function resolveCollisions() {
 }
 
 // ============================================================
-//  COMPUTE HIT BOX
+//  HIT BOX
 // ============================================================
 function computeHitBox(dir) {
   const range = CONFIG.HIT_RANGE;
   const thick = CONFIG.HIT_THICKNESS;
   switch (dir) {
-    case 'right':
-      return { x: player.x + player.w, y: player.y + player.h / 2 - thick / 2, w: range, h: thick };
-    case 'left':
-      return { x: player.x - range, y: player.y + player.h / 2 - thick / 2, w: range, h: thick };
-    case 'up':
-      return { x: player.x + player.w / 2 - thick / 2, y: player.y - range, w: thick, h: range };
-    case 'down':
-      return { x: player.x + player.w / 2 - thick / 2, y: player.y + player.h, w: thick, h: range };
+    case 'right': return { x: player.x + player.w, y: player.y + player.h/2 - thick/2, w: range, h: thick };
+    case 'left':  return { x: player.x - range, y: player.y + player.h/2 - thick/2, w: range, h: thick };
+    case 'up':    return { x: player.x + player.w/2 - thick/2, y: player.y - range, w: thick, h: range };
+    case 'down':  return { x: player.x + player.w/2 - thick/2, y: player.y + player.h, w: thick, h: range };
   }
 }
 
@@ -435,17 +434,15 @@ function update() {
   const holdUp = keys['ArrowUp'];
   const holdDown = keys['ArrowDown'];
 
-  // --- Invincibility countdown ---
   if (player.invTimer > 0) player.invTimer--;
 
-  // --- Last grounded position tracking ---
   if (player.grounded) {
     player.airCharges = CONFIG.MAX_AIR_CHARGES;
     player.lastGroundedX = player.x;
     player.lastGroundedY = player.y;
   }
 
-  // --- Dash active ---
+  // Dash active
   if (player.dashTimer > 0) {
     player.vx = CONFIG.DASH_SPEED * player.dashDirX;
     player.vy = 0;
@@ -470,10 +467,8 @@ function update() {
     if (player.vy > CONFIG.TERMINAL_VELOCITY) player.vy = CONFIG.TERMINAL_VELOCITY;
   }
 
-  // --- Dash cooldown ---
   if (player.dashCooldownTimer > 0) player.dashCooldownTimer--;
 
-  // --- Dash input ---
   if (dashPressedThisFrame && player.dashTimer <= 0 && player.dashCooldownTimer <= 0) {
     const isGrounded = player.grounded || player.coyoteTimer > 0;
     const canDash = isGrounded || player.airCharges > 0;
@@ -483,74 +478,53 @@ function update() {
       player.dashDirX = player.facingRight ? 1 : -1;
       player.vy = 0;
       player.jumping = false;
-      if (!isGrounded) {
-        player.airCharges--;
-      } else {
-        player.coyoteTimer = 0;
-        player.grounded = false;
-      }
-      player.squashX = 1.4;
-      player.squashY = 0.7;
+      if (!isGrounded) { player.airCharges--; }
+      else { player.coyoteTimer = 0; player.grounded = false; }
+      player.squashX = 1.4; player.squashY = 0.7;
     }
   }
 
-  // --- Coyote time ---
-  if (player.grounded) {
-    player.coyoteTimer = CONFIG.COYOTE_TIME;
-  } else {
-    if (player.coyoteTimer > 0) player.coyoteTimer--;
-  }
+  if (player.grounded) { player.coyoteTimer = CONFIG.COYOTE_TIME; }
+  else { if (player.coyoteTimer > 0) player.coyoteTimer--; }
 
-  // --- Jump buffer ---
   if (jumpPressedThisFrame) player.jumpBufferTimer = CONFIG.JUMP_BUFFER;
   if (player.jumpBufferTimer > 0) player.jumpBufferTimer--;
 
-  // --- Jump execution ---
   if (player.dashTimer <= 0) {
     const canGroundJump = player.coyoteTimer > 0;
     const canAirJump = !canGroundJump && player.airCharges > 0;
-    const canJump = canGroundJump || canAirJump;
-    if (canJump && player.jumpBufferTimer > 0) {
+    if ((canGroundJump || canAirJump) && player.jumpBufferTimer > 0) {
       player.vy = CONFIG.JUMP_VELOCITY;
       player.grounded = false;
       player.coyoteTimer = 0;
       player.jumpBufferTimer = 0;
       player.jumping = true;
       if (canAirJump) player.airCharges--;
-      player.squashX = 0.75;
-      player.squashY = 1.3;
+      player.squashX = 0.75; player.squashY = 1.3;
     }
   }
 
-  // --- Variable jump height ---
   if (jumpReleasedThisFrame && player.jumping && player.vy < 0) {
     player.vy *= CONFIG.JUMP_CUT_MULTIPLIER;
     player.jumping = false;
   }
 
-  // --- Hit cooldown ---
   if (player.hitCooldownTimer > 0) player.hitCooldownTimer--;
 
-  // --- Hit input ---
   if (hitPressedThisFrame && player.hitCooldownTimer <= 0) {
-    if (holdUp) {
-      player.hitDir = 'up';
-    } else if (holdDown) {
-      player.hitDir = 'down';
-    } else {
-      player.hitDir = player.facingRight ? 'right' : 'left';
-    }
+    if (holdUp) player.hitDir = 'up';
+    else if (holdDown) player.hitDir = 'down';
+    else player.hitDir = player.facingRight ? 'right' : 'left';
     player.hitActiveTimer = CONFIG.HIT_ACTIVE_FRAMES;
     player.hitCooldownTimer = CONFIG.HIT_COOLDOWN;
     player.hitKnockbackDone = false;
     player.hitSpikeBounceDone = false;
   }
 
-  // --- Hit active: collision every frame ---
+  // Hit active — collision every frame
   if (player.hitActiveTimer > 0) {
     const hitBox = computeHitBox(player.hitDir);
 
-    // Platform knockback (once per hit)
     if (!player.hitKnockbackDone) {
       for (const plat of platforms) {
         if (rectsOverlap(hitBox, plat)) {
@@ -567,110 +541,80 @@ function update() {
       }
     }
 
-    // Black orb — recharge air
-    if (blackOrb.active && rectsOverlap(hitBox, orbToBox(blackOrb))) {
-      blackOrb.active = false;
-      blackOrb.respawnTimer = CONFIG.ORB_RESPAWN_TIME;
-      player.airCharges = CONFIG.MAX_AIR_CHARGES;
-    }
+    // Orb hit checks (generic — works with any number of orbs)
+    for (const orb of orbObjects) {
+      if (!orb.active) continue;
+      if (!rectsOverlap(hitBox, orbToBox(orb))) continue;
 
-    // Red orb — recharge air + bounce on downward hit
-    if (redOrb.active && rectsOverlap(hitBox, orbToBox(redOrb))) {
-      redOrb.active = false;
-      redOrb.respawnTimer = CONFIG.ORB_RESPAWN_TIME;
+      orb.active = false;
+      orb.respawnTimer = CONFIG.ORB_RESPAWN_TIME;
       player.airCharges = CONFIG.MAX_AIR_CHARGES;
-      if (player.hitDir === 'down') {
-        player.vy = CONFIG.DOT_BOUNCE;
-        player.jumping = false;
-        player.squashX = 1.2;
-        player.squashY = 0.8;
+
+      // Type-specific effects
+      if (orb.type === 'red' || orb.type === 'white') {
+        if (player.hitDir === 'down') {
+          player.vy = CONFIG.DOT_BOUNCE;
+          player.jumping = false;
+          player.squashX = 1.2; player.squashY = 0.8;
+        }
+      }
+      if (orb.type === 'white') {
+        player.ghostTimer = CONFIG.GHOST_DURATION;
       }
     }
 
-    // White orb 1 — recharge air + ghost + bounce on downward hit
-    if (whiteOrb1.active && rectsOverlap(hitBox, orbToBox(whiteOrb1))) {
-      whiteOrb1.active = false;
-      whiteOrb1.respawnTimer = CONFIG.ORB_RESPAWN_TIME;
-      player.airCharges = CONFIG.MAX_AIR_CHARGES;
-      player.ghostTimer = CONFIG.GHOST_DURATION;
-      if (player.hitDir === 'down') {
-        player.vy = CONFIG.DOT_BOUNCE;
-        player.jumping = false;
-        player.squashX = 1.2;
-        player.squashY = 0.8;
-      }
-    }
-
-    // White orb 2 — same as white orb 1
-    if (whiteOrb2.active && rectsOverlap(hitBox, orbToBox(whiteOrb2))) {
-      whiteOrb2.active = false;
-      whiteOrb2.respawnTimer = CONFIG.ORB_RESPAWN_TIME;
-      player.airCharges = CONFIG.MAX_AIR_CHARGES;
-      player.ghostTimer = CONFIG.GHOST_DURATION;
-      if (player.hitDir === 'down') {
-        player.vy = CONFIG.DOT_BOUNCE;
-        player.jumping = false;
-        player.squashX = 1.2;
-        player.squashY = 0.8;
-      }
-    }
-
-    // Spike — downward hit = bounce + air recharge (once per hit)
+    // Spike hit (downward) — bounce + air recharge
     if (!player.hitSpikeBounceDone && player.hitDir === 'down') {
-      if (rectsOverlap(hitBox, spikes)) {
-        player.vy = CONFIG.DOT_BOUNCE;
-        player.jumping = false;
-        player.airCharges = CONFIG.MAX_AIR_CHARGES;
-        player.squashX = 1.2;
-        player.squashY = 0.8;
-        player.hitSpikeBounceDone = true;
+      for (const sp of spikeList) {
+        if (rectsOverlap(hitBox, sp)) {
+          player.vy = CONFIG.DOT_BOUNCE;
+          player.jumping = false;
+          player.airCharges = CONFIG.MAX_AIR_CHARGES;
+          player.squashX = 1.2; player.squashY = 0.8;
+          player.hitSpikeBounceDone = true;
+          break;
+        }
       }
     }
 
     player.hitActiveTimer--;
   }
 
-  // --- Orb respawn ---
-  for (const o of allOrbs) {
-    if (!o.active) {
-      o.respawnTimer--;
-      if (o.respawnTimer <= 0) o.active = true;
+  // Orb respawn
+  for (const orb of orbObjects) {
+    if (!orb.active) {
+      orb.respawnTimer--;
+      if (orb.respawnTimer <= 0) orb.active = true;
     }
   }
 
-  // --- Collision ---
+  // Collision
   resolveCollisions();
 
-  // --- Spike body collision (damage) — after position resolved ---
-  if (player.invTimer <= 0 && rectsOverlap(player, spikes)) {
-    takeDamage();
+  // Spike body damage
+  for (const sp of spikeList) {
+    if (player.invTimer <= 0 && rectsOverlap(player, sp)) {
+      takeDamage();
+      break;
+    }
   }
 
-  // --- Ghosting safe position ---
+  // Ghosting safe position
   if (player.ghostTimer > 0) {
-    if (!isInsideGhostable()) {
-      player.safeX = player.x;
-      player.safeY = player.y;
-    }
+    if (!isInsideGhostable()) { player.safeX = player.x; player.safeY = player.y; }
     player.ghostTimer--;
     if (player.ghostTimer <= 0 && isInsideGhostable()) {
-      player.x = player.safeX;
-      player.y = player.safeY;
-      player.vx = 0;
-      player.vy = 0;
-      player.dashTimer = 0;
+      player.x = player.safeX; player.y = player.safeY;
+      player.vx = 0; player.vy = 0; player.dashTimer = 0;
     }
   } else {
-    player.safeX = player.x;
-    player.safeY = player.y;
+    player.safeX = player.x; player.safeY = player.y;
   }
 
-  // --- Fall off world ---
-  if (player.y > CONFIG.ARENA_H + 100) {
-    respawn();
-  }
+  // Fall off world
+  if (player.y > CONFIG.VIEW_H + 100) respawn();
 
-  // --- Visual decay ---
+  // Visual decay
   player.squashX += (1 - player.squashX) * 0.25;
   player.squashY += (1 - player.squashY) * 0.25;
   if (player.landTimer > 0) player.landTimer--;
@@ -680,7 +624,6 @@ function update() {
     if (player.dashTrails[i].alpha <= 0) player.dashTrails.splice(i, 1);
   }
 
-  // --- Reset flags ---
   jumpPressedThisFrame = false;
   jumpReleasedThisFrame = false;
   dashPressedThisFrame = false;
@@ -693,7 +636,6 @@ function update() {
 function drawBackground() {
   ctx.fillStyle = CONFIG.BG_COLOR;
   ctx.fillRect(0, 0, CONFIG.VIEW_W, CONFIG.VIEW_H);
-
   ctx.strokeStyle = CONFIG.GRID_COLOR;
   ctx.lineWidth = 1;
   const gridSize = 40;
@@ -710,16 +652,13 @@ function drawBackground() {
 function drawPlatforms() {
   const ghosting = player.ghostTimer > 0;
   const shimmerPhase = Date.now() * 0.004;
-
   for (const plat of platforms) {
     const sx = plat.x - camera.x;
     if (sx + plat.w < 0 || sx > CONFIG.VIEW_W) continue;
-
     ctx.fillStyle = plat.isGround ? CONFIG.GROUND_COLOR : CONFIG.PLATFORM_COLOR;
     ctx.fillRect(sx, plat.y, plat.w, plat.h);
     ctx.fillStyle = plat.isGround ? CONFIG.GROUND_TOP : CONFIG.PLATFORM_TOP;
     ctx.fillRect(sx, plat.y, plat.w, plat.isGround ? 3 : 2);
-
     if (ghosting && plat.ghostable) {
       const shimmerAlpha = 0.08 + 0.06 * Math.sin(shimmerPhase + plat.x * 0.01);
       ctx.fillStyle = `rgba(220, 220, 255, ${shimmerAlpha})`;
@@ -732,28 +671,26 @@ function drawPlatforms() {
 }
 
 function drawSpikes() {
-  const sx = spikes.x - camera.x;
-  if (sx + spikes.w < 0 || sx > CONFIG.VIEW_W) return;
-
-  const baseY = spikes.y + spikes.h; // bottom of spikes = top of ground
   const triH = CONFIG.SPIKE_TRIANGLE_H;
-  const triW = 14; // width of each triangle
-  const count = Math.floor(spikes.w / triW);
-  const startX = sx + (spikes.w - count * triW) / 2; // center the row
-
-  ctx.fillStyle = CONFIG.SPIKE_COLOR;
-  ctx.strokeStyle = CONFIG.SPIKE_OUTLINE;
-  ctx.lineWidth = 1;
-
-  for (let i = 0; i < count; i++) {
-    const tx = startX + i * triW;
-    ctx.beginPath();
-    ctx.moveTo(tx, baseY);
-    ctx.lineTo(tx + triW / 2, baseY - triH);
-    ctx.lineTo(tx + triW, baseY);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
+  const triW = 14;
+  for (const sp of spikeList) {
+    const sx = sp.x - camera.x;
+    if (sx + sp.w < 0 || sx > CONFIG.VIEW_W) continue;
+    const baseY = sp.y + sp.h;
+    const count = Math.floor(sp.w / triW);
+    const startX = sx + (sp.w - count * triW) / 2;
+    ctx.fillStyle = CONFIG.SPIKE_COLOR;
+    ctx.strokeStyle = CONFIG.SPIKE_OUTLINE;
+    ctx.lineWidth = 1;
+    for (let i = 0; i < count; i++) {
+      const tx = startX + i * triW;
+      ctx.beginPath();
+      ctx.moveTo(tx, baseY);
+      ctx.lineTo(tx + triW / 2, baseY - triH);
+      ctx.lineTo(tx + triW, baseY);
+      ctx.closePath();
+      ctx.fill(); ctx.stroke();
+    }
   }
 }
 
@@ -769,7 +706,6 @@ function drawHitBox() {
   const hb = computeHitBox(player.hitDir);
   const progress = player.hitActiveTimer / CONFIG.HIT_ACTIVE_FRAMES;
   const sx = hb.x - camera.x;
-
   ctx.globalAlpha = progress;
   ctx.fillStyle = CONFIG.HIT_COLOR;
   ctx.fillRect(sx, hb.y, hb.w, hb.h);
@@ -782,17 +718,13 @@ function drawHitBox() {
 function drawPlayer() {
   const cx = player.x + player.w / 2 - camera.x;
   const cy = player.y + player.h / 2;
-
   ctx.save();
   ctx.translate(cx, cy);
   ctx.scale(player.squashX, player.squashY);
 
-  // Invincibility blink
   if (player.invTimer > 0 && Math.floor(player.invTimer / 4) % 2 === 0) {
     ctx.globalAlpha = 0.3;
   }
-
-  // Ghost transparency
   if (player.ghostTimer > 0) {
     const flickerRate = player.ghostTimer < 30 ? 4 : 0;
     if (flickerRate > 0 && Math.floor(player.ghostTimer / flickerRate) % 2 === 0) {
@@ -803,22 +735,19 @@ function drawPlayer() {
   }
 
   ctx.fillStyle = 'rgba(0,0,0,0.3)';
-  ctx.fillRect(-player.w / 2 + 2, -player.h / 2 + 2, player.w, player.h);
-
+  ctx.fillRect(-player.w/2 + 2, -player.h/2 + 2, player.w, player.h);
   ctx.fillStyle = CONFIG.PLAYER_COLOR;
-  ctx.fillRect(-player.w / 2, -player.h / 2, player.w, player.h);
-
+  ctx.fillRect(-player.w/2, -player.h/2, player.w, player.h);
   ctx.strokeStyle = CONFIG.PLAYER_OUTLINE;
   ctx.lineWidth = 1.5;
-  ctx.strokeRect(-player.w / 2, -player.h / 2, player.w, player.h);
+  ctx.strokeRect(-player.w/2, -player.h/2, player.w, player.h);
 
   if (player.ghostTimer > 0) {
     ctx.fillStyle = 'rgba(200, 200, 255, 0.15)';
-    ctx.fillRect(-player.w / 2, -player.h / 2, player.w, player.h);
+    ctx.fillRect(-player.w/2, -player.h/2, player.w, player.h);
   }
 
-  // Eyes
-  const eyeY = -player.h / 2 + 10;
+  const eyeY = -player.h/2 + 10;
   const eyeSpacing = 5;
   const eyeOffsetX = player.facingRight ? 2 : -2;
   ctx.fillStyle = '#fff';
@@ -833,55 +762,46 @@ function drawPlayer() {
   ctx.restore();
 }
 
-function drawOrbGeneric(o, fillColor, strokeColor, glowColor) {
-  if (!o.active) return;
-  const sx = o.x - camera.x;
-  if (sx + o.radius + 4 < 0 || sx - o.radius - 4 > CONFIG.VIEW_W) return;
-
-  ctx.save();
-  ctx.beginPath();
-  ctx.arc(sx, o.y, o.radius + 4, 0, Math.PI * 2);
-  ctx.fillStyle = glowColor;
-  ctx.fill();
-  ctx.beginPath();
-  ctx.arc(sx, o.y, o.radius, 0, Math.PI * 2);
-  ctx.fillStyle = fillColor;
-  ctx.fill();
-  ctx.strokeStyle = strokeColor;
-  ctx.lineWidth = 1.5;
-  ctx.stroke();
-  ctx.restore();
-}
+const ORB_COLORS = {
+  black: { fill: '#111118', stroke: '#333344', glow: 'rgba(0, 0, 0, 0.3)' },
+  red:   { fill: '#661522', stroke: '#993344', glow: 'rgba(150, 30, 30, 0.25)' },
+  white: { fill: '#ccccdd', stroke: '#ffffff', glow: 'rgba(200, 200, 220, 0.25)' },
+};
 
 function drawOrbs() {
-  drawOrbGeneric(blackOrb, '#111118', '#333344', 'rgba(0, 0, 0, 0.3)');
-  drawOrbGeneric(redOrb, '#661522', '#993344', 'rgba(150, 30, 30, 0.25)');
-  drawOrbGeneric(whiteOrb1, '#ccccdd', '#ffffff', 'rgba(200, 200, 220, 0.25)');
-  drawOrbGeneric(whiteOrb2, '#ccccdd', '#ffffff', 'rgba(200, 200, 220, 0.25)');
+  for (const orb of orbObjects) {
+    if (!orb.active) continue;
+    const sx = orb.x - camera.x;
+    if (sx + orb.radius + 4 < 0 || sx - orb.radius - 4 > CONFIG.VIEW_W) continue;
+    const colors = ORB_COLORS[orb.type] || ORB_COLORS.black;
+    ctx.save();
+    ctx.beginPath(); ctx.arc(sx, orb.y, orb.radius + 4, 0, Math.PI * 2);
+    ctx.fillStyle = colors.glow; ctx.fill();
+    ctx.beginPath(); ctx.arc(sx, orb.y, orb.radius, 0, Math.PI * 2);
+    ctx.fillStyle = colors.fill; ctx.fill();
+    ctx.strokeStyle = colors.stroke; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.restore();
+  }
 }
 
 function drawHUD() {
   const hudX = 24;
   const hudY = 18;
 
-  // Hearts
   for (let i = 0; i < CONFIG.MAX_HP; i++) {
     const hx = hudX + i * 20;
     const hy = hudY - 6;
-    const filled = i < player.hp;
-    ctx.fillStyle = filled ? CONFIG.HEART_FULL : CONFIG.HEART_EMPTY;
-    // Simple heart shape using two arcs + triangle
+    ctx.fillStyle = i < player.hp ? CONFIG.HEART_FULL : CONFIG.HEART_EMPTY;
     ctx.beginPath();
     const s = 6;
-    ctx.moveTo(hx, hy + s * 0.3);
-    ctx.bezierCurveTo(hx, hy - s * 0.3, hx - s, hy - s * 0.3, hx - s, hy + s * 0.3);
-    ctx.bezierCurveTo(hx - s, hy + s * 0.8, hx, hy + s * 1.2, hx, hy + s * 1.5);
-    ctx.bezierCurveTo(hx, hy + s * 1.2, hx + s, hy + s * 0.8, hx + s, hy + s * 0.3);
-    ctx.bezierCurveTo(hx + s, hy - s * 0.3, hx, hy - s * 0.3, hx, hy + s * 0.3);
+    ctx.moveTo(hx, hy + s*0.3);
+    ctx.bezierCurveTo(hx, hy - s*0.3, hx - s, hy - s*0.3, hx - s, hy + s*0.3);
+    ctx.bezierCurveTo(hx - s, hy + s*0.8, hx, hy + s*1.2, hx, hy + s*1.5);
+    ctx.bezierCurveTo(hx, hy + s*1.2, hx + s, hy + s*0.8, hx + s, hy + s*0.3);
+    ctx.bezierCurveTo(hx + s, hy - s*0.3, hx, hy - s*0.3, hx, hy + s*0.3);
     ctx.fill();
   }
 
-  // Air charge
   ctx.fillStyle = 'rgba(255,255,255,0.25)';
   ctx.font = '11px Courier New';
   ctx.textAlign = 'left';
@@ -895,37 +815,26 @@ function drawHUD() {
     ctx.strokeRect(hudX + 30 + i * 16, hudY + 14, 10, 10);
   }
 
-  // Hit cooldown
   if (player.hitCooldownTimer > 0) {
     const cdProgress = 1 - (player.hitCooldownTimer / CONFIG.HIT_COOLDOWN);
-    ctx.fillStyle = '#333344';
-    ctx.fillRect(hudX, hudY + 30, 40, 3);
-    ctx.fillStyle = CONFIG.HIT_COLOR;
-    ctx.fillRect(hudX, hudY + 30, 40 * cdProgress, 3);
+    ctx.fillStyle = '#333344'; ctx.fillRect(hudX, hudY + 30, 40, 3);
+    ctx.fillStyle = CONFIG.HIT_COLOR; ctx.fillRect(hudX, hudY + 30, 40 * cdProgress, 3);
   }
 
-  // Ghost bar
   if (player.ghostTimer > 0) {
     const ghostProgress = player.ghostTimer / CONFIG.GHOST_DURATION;
-    ctx.fillStyle = '#333344';
-    ctx.fillRect(hudX, hudY + 38, 60, 4);
-    ctx.fillStyle = '#ccccff';
-    ctx.fillRect(hudX, hudY + 38, 60 * ghostProgress, 4);
+    ctx.fillStyle = '#333344'; ctx.fillRect(hudX, hudY + 38, 60, 4);
+    ctx.fillStyle = '#ccccff'; ctx.fillRect(hudX, hudY + 38, 60 * ghostProgress, 4);
     ctx.fillStyle = 'rgba(200, 200, 255, 0.4)';
     ctx.fillText('GHOST', hudX + 65, hudY + 42);
   }
 
-  // Debug
+  // Level indicator (top-right)
   ctx.fillStyle = 'rgba(255,255,255,0.2)';
-  ctx.font = '11px Courier New';
-  const info = [
-    `vel: ${player.vx.toFixed(1)}, ${player.vy.toFixed(1)}`,
-    `hp: ${player.hp}  charges: ${player.airCharges}`,
-    `ghost: ${player.ghostTimer > 0 ? player.ghostTimer : 'off'}`,
-  ];
-  info.forEach((line, i) => {
-    ctx.fillText(line, hudX, hudY + 60 + i * 14);
-  });
+  ctx.font = '12px Courier New';
+  ctx.textAlign = 'right';
+  ctx.fillText('LEVEL ' + (currentLevel + 1), CONFIG.VIEW_W - 20, 24);
+  ctx.textAlign = 'left';
 }
 
 function render() {
@@ -960,6 +869,10 @@ function gameLoop(timestamp) {
   requestAnimationFrame(gameLoop);
 }
 
+// ============================================================
+//  INIT — load level 0 (Sandbox) and start
+// ============================================================
+loadLevel(0);
 requestAnimationFrame(gameLoop);
 </script>
 
