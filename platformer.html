@@ -42,7 +42,7 @@
 
 <script>
 // ============================================================
-//  CONFIGURATION (engine constants — never change per level)
+//  CONFIGURATION
 // ============================================================
 const CONFIG = {
   VIEW_W: 1280,
@@ -79,14 +79,19 @@ const CONFIG = {
   ORB_RADIUS: 8,
   ORB_RESPAWN_TIME: 300,
   MAX_AIR_CHARGES: 1,
-  MAX_HP: 3,
+  MAX_HP: 5,
   INVINCIBILITY_FRAMES: 90,
+  FALL_DAMAGE: 2,
 
   SPIKE_TRIANGLE_H: 16,
-
   GROUND_H: 40,
 
-  // Colors
+  // Restart button (screen-space)
+  RESTART_BTN_X: 1280 - 90,
+  RESTART_BTN_Y: 8,
+  RESTART_BTN_W: 70,
+  RESTART_BTN_H: 26,
+
   BG_COLOR: '#0f1019',
   PLAYER_COLOR: '#e8533f',
   PLAYER_OUTLINE: '#ff7b6b',
@@ -105,86 +110,104 @@ const CONFIG = {
   SPIKE_OUTLINE: '#777788',
 };
 
-// Derived constants
-const GROUND_Y = CONFIG.VIEW_H - CONFIG.GROUND_H;         // 680
-const FLOOR_SPAWN_Y = GROUND_Y - CONFIG.PLAYER_H;          // 648
-const LEFT_SPAWN_X = 30;                                    // just past left wall
+const GROUND_Y = CONFIG.VIEW_H - CONFIG.GROUND_H;
+const FLOOR_SPAWN_Y = GROUND_Y - CONFIG.PLAYER_H;
+const LEFT_SPAWN_X = 30;
+
+// ============================================================
+//  SEEDED RANDOM (for deterministic floor holes in levels 11-20)
+// ============================================================
+function seededRandom(seed) {
+  let s = seed;
+  return function() {
+    s = (s * 1103515245 + 12345) & 0x7fffffff;
+    return s / 0x7fffffff;
+  };
+}
 
 // ============================================================
 //  LEVEL DATA
-//  Each level defines:
-//    arenaW      — total world width (enables different-sized levels)
-//    spawnX      — individual spawn X (enables different start positions)
-//    spawnY      — individual spawn Y
-//    platforms   — array including ground + walls (enables different borders)
-//    orbs        — array of {x, y, type: 'black'|'red'|'white'}
-//    spikeZones  — array of {x, w, h}
-//
-//  Platform height guide (from ground at y=680):
-//    Tier 1 (single jump):   y = 570–610
-//    Tier 2 (double-jump):   y = 470–530
-//    Tier 3 (from tier 2):   y = 380–440
+//  Each level now also supports:
+//    floorHoles  — array of {x, w} gaps in the ground
+//    finishX     — x position for the green finish dot
+//    finishY     — y position for the green finish dot
 // ============================================================
-function makeDefaultLevel() {
-  const AH = CONFIG.VIEW_H;
+function makeDefaultLevel(levelIndex) {
   const AW = 2400;
+  const floorHoles = [];
+
+  // Levels 11-20 (index 10-19) get random floor holes
+  if (levelIndex >= 10) {
+    const rng = seededRandom(levelIndex * 7919 + 31);
+    const holeCount = 2 + Math.floor(rng() * 3); // 2-4 holes
+    for (let h = 0; h < holeCount; h++) {
+      const holeW = 60 + Math.floor(rng() * 80);  // 60-140 wide
+      // Place holes in safe range (avoid walls and spike zone 730-870)
+      let holeX;
+      let attempts = 0;
+      do {
+        holeX = 100 + Math.floor(rng() * (AW - 300));
+        attempts++;
+      } while (attempts < 20 && (
+        holeX < 50 ||                           // too close to left wall
+        holeX + holeW > AW - 50 ||              // too close to right wall
+        (holeX < 870 + 30 && holeX + holeW > 730 - 30)  // overlaps spike zone
+      ));
+      if (attempts < 20) {
+        floorHoles.push({ x: holeX, w: holeW });
+      }
+    }
+  }
+
   return {
     arenaW: AW,
     spawnX: LEFT_SPAWN_X,
     spawnY: FLOOR_SPAWN_Y,
+    floorHoles: floorHoles,
     platforms: [
-      // === GROUND (matches arenaW) ===
+      // Ground — will be split around holes in loadLevel
       { x: 0, y: GROUND_Y, w: AW, h: CONFIG.GROUND_H, isGround: true },
 
-      // === LEFT ROOM (0–800) ===
-      // Tier 1 — reachable from ground
+      // Left room (0–800)
       { x: 80,  y: 600, w: 130, h: 16, ghostable: true },
       { x: 280, y: 590, w: 120, h: 16 },
       { x: 480, y: 610, w: 110, h: 16, ghostable: true },
       { x: 650, y: 595, w: 120, h: 16 },
-      // Tier 2 — reachable from tier 1 or double-jump
       { x: 120, y: 500, w: 100, h: 16 },
       { x: 340, y: 490, w: 120, h: 16, ghostable: true },
       { x: 560, y: 510, w: 100, h: 16 },
-      // Tier 3 — reachable from tier 2
       { x: 60,  y: 400, w: 80,  h: 16, ghostable: true },
       { x: 420, y: 410, w: 90,  h: 16 },
       { x: 680, y: 390, w: 90,  h: 16 },
 
-      // === MAIN ROOM (800–1600) ===
-      // Tier 1
+      // Main room (800–1600)
       { x: 880,  y: 600, w: 140, h: 16 },
       { x: 1080, y: 590, w: 120, h: 16, ghostable: true },
       { x: 1280, y: 610, w: 100, h: 16 },
       { x: 1440, y: 595, w: 130, h: 16, ghostable: true },
-      // Tier 2
       { x: 950,  y: 500, w: 110, h: 16, ghostable: true },
       { x: 1160, y: 490, w: 130, h: 16 },
       { x: 1380, y: 505, w: 100, h: 16, ghostable: true },
-      // Tier 3
       { x: 860,  y: 400, w: 90,  h: 16 },
       { x: 1100, y: 410, w: 80,  h: 16, ghostable: true },
       { x: 1480, y: 395, w: 80,  h: 16 },
 
-      // === GHOSTABLE WALL (Main ↔ Right) ===
+      // Ghostable wall
       { x: 1584, y: 0, w: 16, h: GROUND_Y, ghostable: true },
 
-      // === RIGHT ROOM (1600–2400) ===
-      // Tier 1
+      // Right room (1600–2400)
       { x: 1680, y: 605, w: 140, h: 16, ghostable: true },
       { x: 1880, y: 590, w: 120, h: 16 },
       { x: 2060, y: 610, w: 100, h: 16, ghostable: true },
       { x: 2220, y: 595, w: 130, h: 16 },
-      // Tier 2
       { x: 1720, y: 500, w: 110, h: 16 },
       { x: 1920, y: 490, w: 130, h: 16, ghostable: true },
       { x: 2140, y: 505, w: 100, h: 16 },
-      // Tier 3
       { x: 1660, y: 400, w: 90,  h: 16, ghostable: true },
       { x: 1900, y: 410, w: 80,  h: 16 },
       { x: 2280, y: 395, w: 80,  h: 16 },
 
-      // === OUTER WALLS (computed from arenaW) ===
+      // Outer walls
       { x: 0, y: 0, w: 16, h: GROUND_Y },
       { x: AW - 16, y: 0, w: 16, h: GROUND_Y },
     ],
@@ -197,13 +220,36 @@ function makeDefaultLevel() {
     spikeZones: [
       { x: 730, w: 140, h: 18 },
     ],
+    // Green finish dot — near right end
+    finishX: AW - 80,
+    finishY: FLOOR_SPAWN_Y - 20,
   };
 }
 
-// Build 20 levels — all identical for now, each customizable
 const LEVELS = [];
 for (let i = 0; i < 20; i++) {
-  LEVELS.push(makeDefaultLevel());
+  LEVELS.push(makeDefaultLevel(i));
+}
+
+// ============================================================
+//  SPLIT GROUND AROUND FLOOR HOLES
+// ============================================================
+function splitGroundAroundHoles(groundPlat, holes) {
+  if (!holes || holes.length === 0) return [{ ...groundPlat }];
+  const sorted = [...holes].sort((a, b) => a.x - b.x);
+  const segments = [];
+  let curX = groundPlat.x;
+  for (const hole of sorted) {
+    if (hole.x > curX) {
+      segments.push({ x: curX, y: groundPlat.y, w: hole.x - curX, h: groundPlat.h, isGround: true });
+    }
+    curX = hole.x + hole.w;
+  }
+  const endX = groundPlat.x + groundPlat.w;
+  if (curX < endX) {
+    segments.push({ x: curX, y: groundPlat.y, w: endX - curX, h: groundPlat.h, isGround: true });
+  }
+  return segments;
 }
 
 // ============================================================
@@ -214,9 +260,11 @@ let arenaW = 2400;
 let platforms = [];
 let spikeList = [];
 let orbObjects = [];
+let floorHoleList = [];  // for rendering the dark gaps
+let finishOrb = null;    // the green finish dot
 
 // ============================================================
-//  GAME STATE — 'start' (waiting for click) or 'playing'
+//  GAME STATE
 // ============================================================
 let gameState = 'start';
 
@@ -228,8 +276,28 @@ const ctx = canvas.getContext('2d');
 canvas.width = CONFIG.VIEW_W;
 canvas.height = CONFIG.VIEW_H;
 
-// Click on canvas → start playing (focus for keyboard input)
-canvas.addEventListener('click', () => {
+// Mouse tracking for restart button hover
+let mouseX = 0;
+let mouseY = 0;
+
+canvas.addEventListener('mousemove', (e) => {
+  const rect = canvas.getBoundingClientRect();
+  mouseX = (e.clientX - rect.left) * (CONFIG.VIEW_W / rect.width);
+  mouseY = (e.clientY - rect.top) * (CONFIG.VIEW_H / rect.height);
+});
+
+function isOverRestartBtn() {
+  return mouseX >= CONFIG.RESTART_BTN_X && mouseX <= CONFIG.RESTART_BTN_X + CONFIG.RESTART_BTN_W &&
+         mouseY >= CONFIG.RESTART_BTN_Y && mouseY <= CONFIG.RESTART_BTN_Y + CONFIG.RESTART_BTN_H;
+}
+
+canvas.addEventListener('click', (e) => {
+  // Check restart button first
+  if (gameState === 'playing' && isOverRestartBtn()) {
+    loadLevel(currentLevel);
+    return;
+  }
+  // Start screen click
   if (gameState === 'start') {
     gameState = 'playing';
     canvas.style.cursor = 'default';
@@ -237,17 +305,17 @@ canvas.addEventListener('click', () => {
   canvas.focus();
 });
 
-// Make canvas focusable
 canvas.setAttribute('tabindex', '0');
 
 // ============================================================
-//  CAMERA
+//  CAMERA — smooth follow
 // ============================================================
 const camera = { x: 0 };
 
 function updateCamera() {
   const target = player.x + player.w / 2 - CONFIG.VIEW_W / 2;
-  camera.x += (target - camera.x) * 0.12;
+  // Softer lerp for smooth death/teleport transitions
+  camera.x += (target - camera.x) * 0.08;
   if (camera.x < 0) camera.x = 0;
   if (camera.x > arenaW - CONFIG.VIEW_W) camera.x = arenaW - CONFIG.VIEW_W;
 }
@@ -314,13 +382,24 @@ function loadLevel(n) {
   spawnX = lvl.spawnX;
   spawnY = lvl.spawnY;
 
-  platforms = lvl.platforms.map(p => ({ ...p }));
+  // Build platforms — split ground around floor holes
+  platforms = [];
+  for (const p of lvl.platforms) {
+    if (p.isGround) {
+      const segments = splitGroundAroundHoles(p, lvl.floorHoles);
+      platforms.push(...segments);
+    } else {
+      platforms.push({ ...p });
+    }
+  }
+
+  // Store floor holes for rendering
+  floorHoleList = (lvl.floorHoles || []).map(h => ({
+    x: h.x, y: GROUND_Y, w: h.w, h: CONFIG.GROUND_H,
+  }));
 
   spikeList = lvl.spikeZones.map(sz => ({
-    x: sz.x,
-    y: GROUND_Y - sz.h,
-    w: sz.w,
-    h: sz.h,
+    x: sz.x, y: GROUND_Y - sz.h, w: sz.w, h: sz.h,
   }));
 
   orbObjects = lvl.orbs.map(o => ({
@@ -328,14 +407,20 @@ function loadLevel(n) {
     radius: CONFIG.ORB_RADIUS, active: true, respawnTimer: 0,
   }));
 
+  // Green finish dot
+  finishOrb = {
+    x: lvl.finishX, y: lvl.finishY,
+    radius: CONFIG.ORB_RADIUS + 2, active: true,
+  };
+
   respawn();
+  // Don't snap camera — let smooth follow handle it from wherever it was
+  // But for initial load or new level, set a reasonable starting position
   camera.x = Math.max(0, Math.min(spawnX - CONFIG.VIEW_W / 2, arenaW - CONFIG.VIEW_W));
 
-  // Show start screen for this level
   gameState = 'start';
   canvas.style.cursor = 'pointer';
 
-  // Notify parent
   if (window.parent !== window) {
     window.parent.postMessage({ type: 'levelLoaded', level: n }, '*');
   }
@@ -376,8 +461,7 @@ function isInsideGhostable() {
 }
 
 function respawn() {
-  player.x = spawnX;
-  player.y = spawnY;
+  player.x = spawnX; player.y = spawnY;
   player.vx = 0; player.vy = 0;
   player.hp = CONFIG.MAX_HP;
   player.invTimer = 0;
@@ -392,15 +476,20 @@ function respawn() {
   player.dashTrails = [];
 }
 
-function takeDamage() {
+function takeDamage(amount) {
   if (player.invTimer > 0) return;
-  player.hp--;
+  player.hp -= amount;
   if (player.hp <= 0) { respawn(); return; }
   player.x = player.lastGroundedX;
   player.y = player.lastGroundedY;
   player.vx = 0; player.vy = 0;
   player.dashTimer = 0;
   player.invTimer = CONFIG.INVINCIBILITY_FRAMES;
+}
+
+function advanceLevel() {
+  const next = (currentLevel + 1) % LEVELS.length;
+  loadLevel(next); // loadLevel already notifies parent
 }
 
 // ============================================================
@@ -451,7 +540,7 @@ function computeHitBox(dir) {
 }
 
 // ============================================================
-//  UPDATE (only runs when gameState === 'playing')
+//  UPDATE
 // ============================================================
 function update() {
   if (gameState !== 'playing') return;
@@ -575,6 +664,12 @@ function update() {
       if (orb.type === 'white') player.ghostTimer = CONFIG.GHOST_DURATION;
     }
 
+    // Green finish orb — hit detection
+    if (finishOrb && finishOrb.active && rectsOverlap(hitBox, orbToBox(finishOrb))) {
+      advanceLevel();
+      return; // stop processing this frame
+    }
+
     if (!player.hitSpikeBounceDone && player.hitDir === 'down') {
       for (const sp of spikeList) {
         if (rectsOverlap(hitBox, sp)) {
@@ -597,10 +692,23 @@ function update() {
 
   resolveCollisions();
 
-  for (const sp of spikeList) {
-    if (player.invTimer <= 0 && rectsOverlap(player, sp)) { takeDamage(); break; }
+  // Green finish orb — body touch detection
+  if (finishOrb && finishOrb.active && rectsOverlap(player, orbToBox(finishOrb))) {
+    advanceLevel();
+    return;
   }
 
+  // Spike body damage
+  for (const sp of spikeList) {
+    if (player.invTimer <= 0 && rectsOverlap(player, sp)) { takeDamage(1); break; }
+  }
+
+  // Floor hole fall detection — player fell below ground level
+  if (player.y > CONFIG.VIEW_H + 60) {
+    takeDamage(CONFIG.FALL_DAMAGE);
+  }
+
+  // Ghosting
   if (player.ghostTimer > 0) {
     if (!isInsideGhostable()) { player.safeX = player.x; player.safeY = player.y; }
     player.ghostTimer--;
@@ -612,8 +720,7 @@ function update() {
     player.safeX = player.x; player.safeY = player.y;
   }
 
-  if (player.y > CONFIG.VIEW_H + 100) respawn();
-
+  // Visual decay
   player.squashX += (1 - player.squashX) * 0.25;
   player.squashY += (1 - player.squashY) * 0.25;
   if (player.landTimer > 0) player.landTimer--;
@@ -666,6 +773,23 @@ function drawPlatforms() {
       ctx.lineWidth = 1;
       ctx.strokeRect(sx + 0.5, plat.y + 0.5, plat.w - 1, plat.h - 1);
     }
+  }
+}
+
+function drawFloorHoles() {
+  // Draw dark void where floor holes are
+  for (const hole of floorHoleList) {
+    const sx = hole.x - camera.x;
+    if (sx + hole.w < 0 || sx > CONFIG.VIEW_W) continue;
+    ctx.fillStyle = '#050508';
+    ctx.fillRect(sx, hole.y, hole.w, hole.h);
+    // Danger edges
+    ctx.strokeStyle = 'rgba(200, 50, 50, 0.3)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(sx, hole.y); ctx.lineTo(sx, hole.y + hole.h);
+    ctx.moveTo(sx + hole.w, hole.y); ctx.lineTo(sx + hole.w, hole.y + hole.h);
+    ctx.stroke();
   }
 }
 
@@ -778,79 +902,132 @@ function drawOrbs() {
   }
 }
 
-function drawHUD() {
-  const hudX = 24;
-  const hudY = 18;
+function drawFinishOrb() {
+  if (!finishOrb || !finishOrb.active) return;
+  const sx = finishOrb.x - camera.x;
+  if (sx + finishOrb.radius + 6 < 0 || sx - finishOrb.radius - 6 > CONFIG.VIEW_W) return;
 
+  // Pulsing glow
+  const pulse = 1 + 0.15 * Math.sin(Date.now() * 0.005);
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(sx, finishOrb.y, (finishOrb.radius + 6) * pulse, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(50, 200, 80, 0.15)';
+  ctx.fill();
+
+  ctx.beginPath();
+  ctx.arc(sx, finishOrb.y, finishOrb.radius * pulse, 0, Math.PI * 2);
+  ctx.fillStyle = '#2a8844';
+  ctx.fill();
+  ctx.strokeStyle = '#44dd66';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  ctx.restore();
+}
+
+// ============================================================
+//  HUD — 2x sized hearts and air indicator
+// ============================================================
+function drawHUD() {
+  const hudX = 20;
+  const hudY = 24;
+
+  // Hearts — 2x size (s=12, spacing=38)
   for (let i = 0; i < CONFIG.MAX_HP; i++) {
-    const hx = hudX + i * 20;
-    const hy = hudY - 6;
+    const hx = hudX + i * 38;
+    const hy = hudY;
     ctx.fillStyle = i < player.hp ? CONFIG.HEART_FULL : CONFIG.HEART_EMPTY;
     ctx.beginPath();
-    const s = 6;
-    ctx.moveTo(hx, hy + s*0.3);
-    ctx.bezierCurveTo(hx, hy - s*0.3, hx - s, hy - s*0.3, hx - s, hy + s*0.3);
-    ctx.bezierCurveTo(hx - s, hy + s*0.8, hx, hy + s*1.2, hx, hy + s*1.5);
-    ctx.bezierCurveTo(hx, hy + s*1.2, hx + s, hy + s*0.8, hx + s, hy + s*0.3);
-    ctx.bezierCurveTo(hx + s, hy - s*0.3, hx, hy - s*0.3, hx, hy + s*0.3);
+    const s = 12;
+    ctx.moveTo(hx, hy + s * 0.3);
+    ctx.bezierCurveTo(hx, hy - s * 0.3, hx - s, hy - s * 0.3, hx - s, hy + s * 0.3);
+    ctx.bezierCurveTo(hx - s, hy + s * 0.8, hx, hy + s * 1.2, hx, hy + s * 1.5);
+    ctx.bezierCurveTo(hx, hy + s * 1.2, hx + s, hy + s * 0.8, hx + s, hy + s * 0.3);
+    ctx.bezierCurveTo(hx + s, hy - s * 0.3, hx, hy - s * 0.3, hx, hy + s * 0.3);
     ctx.fill();
   }
 
-  ctx.fillStyle = 'rgba(255,255,255,0.25)';
-  ctx.font = '11px Courier New';
+  // AIR indicator — 2x size
+  const airY = hudY + 36;
+  ctx.fillStyle = 'rgba(255,255,255,0.3)';
+  ctx.font = '16px Courier New';
   ctx.textAlign = 'left';
-  ctx.fillText('AIR', hudX, hudY + 22);
+  ctx.fillText('AIR', hudX - 4, airY + 6);
   for (let i = 0; i < CONFIG.MAX_AIR_CHARGES; i++) {
     const filled = i < player.airCharges;
     ctx.fillStyle = filled ? CONFIG.CHARGE_FULL : CONFIG.CHARGE_EMPTY;
-    ctx.fillRect(hudX + 30 + i * 16, hudY + 14, 10, 10);
+    ctx.fillRect(hudX + 44 + i * 28, airY - 8, 20, 20);
     ctx.strokeStyle = filled ? '#66eebb' : '#444455';
-    ctx.lineWidth = 1;
-    ctx.strokeRect(hudX + 30 + i * 16, hudY + 14, 10, 10);
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(hudX + 44 + i * 28, airY - 8, 20, 20);
   }
 
+  // Hit cooldown bar (under air)
   if (player.hitCooldownTimer > 0) {
     const cdProgress = 1 - (player.hitCooldownTimer / CONFIG.HIT_COOLDOWN);
-    ctx.fillStyle = '#333344'; ctx.fillRect(hudX, hudY + 30, 40, 3);
-    ctx.fillStyle = CONFIG.HIT_COLOR; ctx.fillRect(hudX, hudY + 30, 40 * cdProgress, 3);
+    ctx.fillStyle = '#333344'; ctx.fillRect(hudX, airY + 18, 60, 4);
+    ctx.fillStyle = CONFIG.HIT_COLOR; ctx.fillRect(hudX, airY + 18, 60 * cdProgress, 4);
   }
 
+  // Ghost bar
   if (player.ghostTimer > 0) {
     const ghostProgress = player.ghostTimer / CONFIG.GHOST_DURATION;
-    ctx.fillStyle = '#333344'; ctx.fillRect(hudX, hudY + 38, 60, 4);
-    ctx.fillStyle = '#ccccff'; ctx.fillRect(hudX, hudY + 38, 60 * ghostProgress, 4);
+    ctx.fillStyle = '#333344'; ctx.fillRect(hudX, airY + 26, 80, 5);
+    ctx.fillStyle = '#ccccff'; ctx.fillRect(hudX, airY + 26, 80 * ghostProgress, 5);
     ctx.fillStyle = 'rgba(200, 200, 255, 0.4)';
-    ctx.fillText('GHOST', hudX + 65, hudY + 42);
+    ctx.font = '12px Courier New';
+    ctx.fillText('GHOST', hudX + 85, airY + 31);
   }
 
+  // Level indicator
   ctx.fillStyle = 'rgba(255,255,255,0.2)';
   ctx.font = '12px Courier New';
   ctx.textAlign = 'right';
-  ctx.fillText('LEVEL ' + (currentLevel + 1), CONFIG.VIEW_W - 20, 24);
+  ctx.fillText('LEVEL ' + (currentLevel + 1), CONFIG.RESTART_BTN_X - 16, 24);
   ctx.textAlign = 'left';
 }
 
 // ============================================================
-//  START SCREEN OVERLAY
+//  RESTART BUTTON (screen-space, top-right)
+// ============================================================
+function drawRestartButton() {
+  const bx = CONFIG.RESTART_BTN_X;
+  const by = CONFIG.RESTART_BTN_Y;
+  const bw = CONFIG.RESTART_BTN_W;
+  const bh = CONFIG.RESTART_BTN_H;
+  const hover = isOverRestartBtn() && gameState === 'playing';
+
+  ctx.fillStyle = hover ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.04)';
+  ctx.fillRect(bx, by, bw, bh);
+  ctx.strokeStyle = hover ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.1)';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(bx, by, bw, bh);
+
+  ctx.fillStyle = hover ? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,0.25)';
+  ctx.font = '11px Courier New';
+  ctx.textAlign = 'center';
+  ctx.fillText('RESTART', bx + bw / 2, by + bh / 2 + 4);
+  ctx.textAlign = 'left';
+}
+
+// ============================================================
+//  START SCREEN
 // ============================================================
 function drawStartScreen() {
-  // Dim overlay
   ctx.fillStyle = 'rgba(10, 10, 15, 0.7)';
   ctx.fillRect(0, 0, CONFIG.VIEW_W, CONFIG.VIEW_H);
 
-  // Level title
   ctx.fillStyle = '#fff';
   ctx.font = '600 28px Courier New';
   ctx.textAlign = 'center';
   ctx.fillText('LEVEL ' + (currentLevel + 1), CONFIG.VIEW_W / 2, CONFIG.VIEW_H / 2 - 30);
 
-  // Click prompt with pulsing opacity
   const pulse = 0.5 + 0.3 * Math.sin(Date.now() * 0.004);
   ctx.fillStyle = `rgba(200, 200, 210, ${pulse})`;
   ctx.font = '16px Courier New';
   ctx.fillText('Click to start', CONFIG.VIEW_W / 2, CONFIG.VIEW_H / 2 + 20);
 
-  // Controls reminder
   ctx.fillStyle = 'rgba(255,255,255,0.15)';
   ctx.font = '12px Courier New';
   ctx.fillText('ARROWS move  ·  SPACE jump  ·  W dash  ·  R hit', CONFIG.VIEW_W / 2, CONFIG.VIEW_H / 2 + 60);
@@ -864,13 +1041,16 @@ function drawStartScreen() {
 function render() {
   updateCamera();
   drawBackground();
+  drawFloorHoles();
   drawPlatforms();
   drawSpikes();
   drawOrbs();
+  drawFinishOrb();
   drawDashTrails();
   drawHitBox();
   drawPlayer();
   drawHUD();
+  drawRestartButton();
 
   if (gameState === 'start') {
     drawStartScreen();
