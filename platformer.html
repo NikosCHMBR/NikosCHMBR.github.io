@@ -86,9 +86,9 @@ const CONFIG = {
   SPIKE_TRIANGLE_H: 16,
   GROUND_H: 40,
 
-  // Restart button (screen-space)
-  RESTART_BTN_X: 1280 - 90,
-  RESTART_BTN_Y: 8,
+  // Restart button (screen-space, below LEVEL text)
+  RESTART_BTN_X: 1280 - 20 - 70,
+  RESTART_BTN_Y: 32,
   RESTART_BTN_W: 70,
   RESTART_BTN_H: 26,
 
@@ -264,9 +264,11 @@ let floorHoleList = [];  // for rendering the dark gaps
 let finishOrb = null;    // the green finish dot
 
 // ============================================================
-//  GAME STATE
+//  GAME STATE — 'start' | 'playing' | 'transition'
 // ============================================================
 let gameState = 'start';
+let transitionTimer = 0;
+const TRANSITION_TOTAL = 90;  // 60 frames solid + 30 frames fade
 
 // ============================================================
 //  CANVAS
@@ -292,8 +294,8 @@ function isOverRestartBtn() {
 }
 
 canvas.addEventListener('click', (e) => {
-  // Check restart button first
-  if (gameState === 'playing' && isOverRestartBtn()) {
+  // Restart button — works during playing or transition
+  if ((gameState === 'playing' || gameState === 'transition') && isOverRestartBtn()) {
     loadLevel(currentLevel);
     return;
   }
@@ -489,7 +491,11 @@ function takeDamage(amount) {
 
 function advanceLevel() {
   const next = (currentLevel + 1) % LEVELS.length;
-  loadLevel(next); // loadLevel already notifies parent
+  loadLevel(next); // loadLevel sets gameState='start'
+  // Override to transition banner (no click needed for natural progression)
+  gameState = 'transition';
+  transitionTimer = TRANSITION_TOTAL;
+  canvas.style.cursor = 'default';
 }
 
 // ============================================================
@@ -543,6 +549,15 @@ function computeHitBox(dir) {
 //  UPDATE
 // ============================================================
 function update() {
+  // Transition banner countdown — game paused, auto-resumes
+  if (gameState === 'transition') {
+    transitionTimer--;
+    if (transitionTimer <= 0) {
+      gameState = 'playing';
+    }
+    return;
+  }
+
   if (gameState !== 'playing') return;
 
   const moveLeft = keys['ArrowLeft'];
@@ -930,7 +945,7 @@ function drawFinishOrb() {
 //  HUD — 2x sized hearts and air indicator
 // ============================================================
 function drawHUD() {
-  const hudX = 20;
+  const hudX = 36;  // offset by wall width (16px) so it doesn't clip
   const hudY = 24;
 
   // Hearts — 2x size (s=12, spacing=38)
@@ -980,11 +995,11 @@ function drawHUD() {
     ctx.fillText('GHOST', hudX + 85, airY + 31);
   }
 
-  // Level indicator
-  ctx.fillStyle = 'rgba(255,255,255,0.2)';
+  // Level indicator — right-aligned, above restart button
+  ctx.fillStyle = 'rgba(255,255,255,0.25)';
   ctx.font = '12px Courier New';
   ctx.textAlign = 'right';
-  ctx.fillText('LEVEL ' + (currentLevel + 1), CONFIG.RESTART_BTN_X - 16, 24);
+  ctx.fillText('LEVEL ' + (currentLevel + 1), CONFIG.VIEW_W - 20, 22);
   ctx.textAlign = 'left';
 }
 
@@ -996,7 +1011,7 @@ function drawRestartButton() {
   const by = CONFIG.RESTART_BTN_Y;
   const bw = CONFIG.RESTART_BTN_W;
   const bh = CONFIG.RESTART_BTN_H;
-  const hover = isOverRestartBtn() && gameState === 'playing';
+  const hover = isOverRestartBtn() && (gameState === 'playing' || gameState === 'transition');
 
   ctx.fillStyle = hover ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.04)';
   ctx.fillRect(bx, by, bw, bh);
@@ -1036,6 +1051,33 @@ function drawStartScreen() {
 }
 
 // ============================================================
+//  TRANSITION BANNER (green dot progression — auto-fades)
+// ============================================================
+function drawTransitionBanner() {
+  // First 60 frames: solid. Last 30 frames: fade out.
+  const fadeStart = 30; // frames remaining when fade begins
+  let alpha;
+  if (transitionTimer > fadeStart) {
+    alpha = 1;
+  } else {
+    alpha = transitionTimer / fadeStart;
+  }
+
+  // Dim overlay (fades with banner)
+  ctx.fillStyle = `rgba(10, 10, 15, ${0.5 * alpha})`;
+  ctx.fillRect(0, 0, CONFIG.VIEW_W, CONFIG.VIEW_H);
+
+  // Level title
+  ctx.globalAlpha = alpha;
+  ctx.fillStyle = '#fff';
+  ctx.font = '600 32px Courier New';
+  ctx.textAlign = 'center';
+  ctx.fillText('LEVEL ' + (currentLevel + 1), CONFIG.VIEW_W / 2, CONFIG.VIEW_H / 2 - 10);
+  ctx.globalAlpha = 1;
+  ctx.textAlign = 'left';
+}
+
+// ============================================================
 //  MAIN RENDER
 // ============================================================
 function render() {
@@ -1054,6 +1096,8 @@ function render() {
 
   if (gameState === 'start') {
     drawStartScreen();
+  } else if (gameState === 'transition') {
+    drawTransitionBanner();
   }
 }
 
