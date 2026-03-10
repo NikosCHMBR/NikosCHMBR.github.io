@@ -126,33 +126,13 @@
             später kannst du hier ein Canvas-Element einbauen und
             mit JavaScript ein richtiges Spiel programmieren.
         </p>
-
-        <!-- =============================================
-             SPIEL-PLATZHALTER
-             Der Button unten zeigt ein einfaches Beispiel
-             dafuer, wie JavaScript und HTML zusammenarbeiten.
-             Die Logik dafuer steht NICHT in script.js,
-             sondern direkt hier als Beispiel fuer
-             "inline JavaScript" mittels onclick="...".
-             ============================================= -->
-        <div class="game-area">
-            <div class="placeholder-icon">🕹️</div>
-            <h2>Spiel kommt bald</h2>
-            <p>In der Zwischenzeit — teste den Button:</p>
-
-            <!-- =============================================
-                 INLINE JAVASCRIPT vs EXTERNE DATEI
-                 
-                 onclick="..." ist "inline" JavaScript.
-                 Fuer kleine Dinge ist das okay, aber bei
-                 groesseren Projekten ist es besser, die
-                 Logik in script.js auszulagern (wie bei
-                 den anderen Beispielen auf der Startseite).
-                 ============================================= -->
-            <button class="demo-button" id="demo-btn">
-                Klick mich!
-            </button>
-            <div class="click-counter" id="click-output"></div>
+        <div class="game-area" style="padding: 0; overflow: hidden;">
+            <iframe 
+                src="platformer.html" 
+                width="800" 
+                height="540" 
+                style="border: none; border-radius: 12px; display: block; max-width: 100%;"
+            ></iframe>
         </div>
     </div>
 
