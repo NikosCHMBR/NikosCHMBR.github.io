@@ -5,24 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Spiel — Meine Seite</title>
 
-    <!-- =============================================
-         DIESELBEN externen Dateien wie in index.html!
-         
-         Weil game.html im SELBEN Ordner liegt wie
-         index.html, sind die Pfade identisch.
-         Jede Aenderung in style.css wirkt sich also
-         automatisch auf BEIDE Seiten aus.
-         ============================================= -->
     <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 
-    <!-- =============================================
-         SEITEN-SPEZIFISCHES CSS
-         Wenn eine Seite eigene Styles braucht, die
-         nur hier gelten sollen, kannst du sie direkt
-         in einem <style>-Block schreiben.
-         Das ueberschreibt oder ergaenzt style.css.
-         ============================================= -->
     <style>
         .page-container {
             max-width: 1340px;
@@ -32,77 +17,73 @@
             background: var(--card-bg);
             border: 2px solid var(--card-border);
             border-radius: 12px;
-            padding: 3rem 2rem;
+            padding: 0;
             text-align: center;
             margin-top: 2rem;
+            overflow: hidden;
         }
 
-        .game-area .placeholder-icon {
-            font-size: 4rem;
-            margin-bottom: 1rem;
+        /* =============================================
+           LEVEL SELECT — 2 rows of 10 buttons
+           ============================================= */
+        .level-select {
+            margin-top: 1.2rem;
+            padding: 0 0.5rem;
         }
 
-        .game-area h2 {
-            font-family: 'Sora', sans-serif;
-            font-size: 1.3rem;
-            font-weight: 600;
-            text-transform: none;
-            letter-spacing: normal;
-            color: var(--text);
-            border-bottom: none;
-            padding-bottom: 0;
-            margin-bottom: 0.5rem;
-        }
-
-        .game-area p {
-            color: var(--subtle);
-            font-weight: 300;
-            font-size: 0.95rem;
-        }
-
-        .demo-button {
-            display: inline-block;
-            margin-top: 1.5rem;
-            padding: 0.7rem 1.8rem;
-            background: var(--accent);
-            color: var(--bg);
-            border: none;
-            border-radius: 8px;
-            font-family: 'Sora', sans-serif;
-            font-size: 0.9rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: opacity 0.3s, transform 0.2s;
-        }
-
-        .demo-button:hover {
-            opacity: 0.85;
-            transform: scale(1.03);
-        }
-
-        .click-counter {
-            margin-top: 1.5rem;
+        .level-select-label {
             font-family: 'Space Mono', monospace;
-            font-size: 0.85rem;
-            color: var(--accent);
-            min-height: 1.2em;
+            font-size: 0.75rem;
+            color: var(--subtle);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 0.6rem;
+        }
+
+        .level-row {
+            display: flex;
+            justify-content: center;
+            gap: 6px;
+            margin-bottom: 6px;
+        }
+
+        .level-btn {
+            width: 48px;
+            height: 36px;
+            background: var(--card-bg, #161622);
+            border: 1.5px solid var(--card-border, #222233);
+            border-radius: 6px;
+            color: var(--subtle, #666);
+            font-family: 'Space Mono', monospace;
+            font-size: 0.8rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .level-btn:hover {
+            border-color: var(--accent, #e8533f);
+            color: var(--text, #eee);
+            transform: translateY(-1px);
+        }
+
+        .level-btn.active {
+            background: var(--accent, #e8533f);
+            border-color: var(--accent, #e8533f);
+            color: var(--bg, #0a0a0f);
+        }
+
+        .level-btn.active:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
         }
     </style>
 </head>
 <body>
 
-    <!-- =============================================
-         NAVIGATION
-         Dieselbe Struktur wie in index.html.
-         Der Link "Start" fuehrt hier zurueck zu
-         index.html (nicht zu #start auf dieser Seite).
-         
-         TIPP: Wenn du willst, dass die Navigation auf
-         ALLEN Seiten identisch ist, musst du sie bei
-         Aenderungen in jeder HTML-Datei anpassen.
-         (Spaeter kann man das mit JavaScript oder
-         einem Framework automatisieren.)
-         ============================================= -->
     <nav>
         <div class="logo">// dein_name</div>
         <ul class="nav-links">
@@ -113,15 +94,8 @@
         </ul>
     </nav>
 
-    <!-- Seiteninhalt -->
     <div class="page-container">
 
-        <!-- =============================================
-             ZURUECK-LINK
-             href="index.html" fuehrt zurueck zur Startseite.
-             Das ist dasselbe Prinzip wie bei den
-             Navigationslinks oben.
-             ============================================= -->
         <a href="index.html" class="back-link">&larr; Zurück zur Startseite</a>
 
         <h1>🎮 Spielbereich</h1>
@@ -130,53 +104,79 @@
             später kannst du hier ein Canvas-Element einbauen und
             mit JavaScript ein richtiges Spiel programmieren.
         </p>
-        <div class="game-area" style="padding: 0; overflow: hidden;">
+
+        <div class="game-area">
             <iframe 
+                id="game-iframe"
                 src="platformer.html" 
                 width="1280" 
-                height="760" 
+                height="720" 
                 style="border: none; border-radius: 12px; display: block; max-width: 100%; margin: 0 auto;"
             ></iframe>
         </div>
+
+        <!-- Level Select Buttons -->
+        <div class="level-select">
+            <div class="level-select-label">Level auswählen</div>
+            <div class="level-row" id="level-row-1"></div>
+            <div class="level-row" id="level-row-2"></div>
+        </div>
+
     </div>
 
-    <!-- Footer -->
     <footer>
         <span>&copy; 2026 Dein Name</span>
         <a href="https://github.com/NikosCHMBR" target="_blank">GitHub</a>
     </footer>
 
-    <!-- Dieselbe externe JS-Datei wie auf der Startseite -->
     <script src="script.js"></script>
 
-    <!-- =============================================
-         SEITEN-SPEZIFISCHES JAVASCRIPT
-         Genau wie beim CSS oben: Wenn du Logik brauchst,
-         die nur auf DIESER Seite laufen soll, kannst du
-         sie in einem extra <script>-Block schreiben.
-         
-         Alternativ koenntest du eine eigene Datei
-         "game.js" erstellen und hier einbinden.
-         ============================================= -->
     <script>
-        // Einfacher Klick-Zaehler als Demonstration
-        const button = document.getElementById("demo-btn");
-        const output = document.getElementById("click-output");
-        let clickCount = 0;
+        // =============================================
+        //  LEVEL SELECT — build 20 buttons, 2 rows of 10
+        // =============================================
+        const iframe = document.getElementById('game-iframe');
+        const row1 = document.getElementById('level-row-1');
+        const row2 = document.getElementById('level-row-2');
+        const levelButtons = [];
+        let activeLevel = 0;
 
-        button.addEventListener("click", function () {
-            clickCount++;
+        for (let i = 0; i < 20; i++) {
+            const btn = document.createElement('button');
+            btn.className = 'level-btn';
+            btn.textContent = i + 1;
+            btn.setAttribute('aria-label', 'Level ' + (i + 1));
 
-            if (clickCount === 1) {
-                output.textContent = "1 Klick — es funktioniert!";
-            } else if (clickCount < 10) {
-                output.textContent = clickCount + " Klicks — weiter so!";
-            } else if (clickCount < 25) {
-                output.textContent = clickCount + " Klicks — du bist fleissig!";
+            btn.addEventListener('click', function () {
+                setActiveLevel(i);
+                // Send level command to platformer iframe
+                iframe.contentWindow.postMessage({ type: 'loadLevel', level: i }, '*');
+            });
+
+            // First 10 in row 1, next 10 in row 2
+            if (i < 10) {
+                row1.appendChild(btn);
             } else {
-                output.textContent = clickCount + " Klicks — okay, du kannst aufhoeren 😄";
+                row2.appendChild(btn);
+            }
+            levelButtons.push(btn);
+        }
+
+        function setActiveLevel(n) {
+            levelButtons[activeLevel].classList.remove('active');
+            activeLevel = n;
+            levelButtons[activeLevel].classList.add('active');
+        }
+
+        // Listen for confirmation from platformer
+        window.addEventListener('message', function (e) {
+            if (e.data && e.data.type === 'levelLoaded' && typeof e.data.level === 'number') {
+                setActiveLevel(e.data.level);
             }
         });
+
+        // Set level 1 as active on load
+        setActiveLevel(0);
     </script>
 </body>
 </html>
