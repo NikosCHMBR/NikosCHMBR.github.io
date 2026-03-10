@@ -247,6 +247,10 @@ function makeDefaultLevel(levelIndex) {
     floorHoles: floorHoles,
     platforms: levelPlatforms,
     orbs: [
+      { x: 860, y: 200, type: 'white' },
+      { x: 1000, y: 175, type: 'white' },
+      { x: 1250, y: 150, type: 'white' },
+      { x: 1400, y: 75, type: 'white' },
       { x: 1200, y: 370, type: 'black' },
       { x: 1400, y: 380, type: 'red' },
       { x: 1560, y: 380, type: 'white' },
@@ -256,8 +260,8 @@ function makeDefaultLevel(levelIndex) {
       { x: 730, w: 140, h: 18 },
     ],
     enemies: enemies,
-    finishX: AW - 80,
-    finishY: FLOOR_SPAWN_Y - 20,
+    finishX: 1560,
+    finishY: 40,
   };
 }
 
