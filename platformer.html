@@ -198,11 +198,12 @@ const LEVELS = [
     platforms: [
       ...makeBase(2400),
       { x: 200, y: 640, w: 200, h: 40 },
-      { x: 1100, y: 430, w: 16, h: 250},
+      { x: 1100, y: 430, w: 100, h: 250},
+      { x: 1200, y: 555, w: 100, h: 125},
     ],
     // EXAMPLE: a floor hole at x=1100, width 80
     floorHoles: [{ x: 400, w: 475 }],
-    spikeZones: [],
+    spikeZones: [{ x: 1400, w: 350, h: 18 }],
     orbs: [
       { x: 1075, y: 525, type: 'red' },
     ],
