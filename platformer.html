@@ -176,18 +176,14 @@ const LEVELS = [
     spawnY: FLOOR_SPAWN_Y,
     platforms: [
       ...makeBase(2400),
-      { x: 200, y: 600, w: 140, h: 16 },
-      { x: 420, y: 560, w: 120, h: 16 },
-      { x: 640, y: 520, w: 130, h: 16 },
-      { x: 860, y: 580, w: 140, h: 16 },
-      { x: 1080, y: 540, w: 120, h: 16 },
-      { x: 1300, y: 500, w: 130, h: 16 },
-      { x: 1520, y: 560, w: 120, h: 16 },
-      { x: 1740, y: 520, w: 140, h: 16 },
-      { x: 1960, y: 580, w: 120, h: 16 },
+      { x: 500, y: 560, w: 140, h: 16 },
+      { x: 800, y: 560, w: 120, h: 16 },
     ],
     // EXAMPLE: a floor hole at x=1100, width 80
-    floorHoles: [{ x: 1100, w: 80 }],
+    floorHoles: [
+      { x: 200, w: 160 },
+      { x: 400, w: 500 },
+    ],
     spikeZones: [],
     orbs: [
       { x: 500, y: 530, type: 'black' },
