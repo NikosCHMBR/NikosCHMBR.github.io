@@ -176,14 +176,13 @@ const LEVELS = [
     spawnY: FLOOR_SPAWN_Y,
     platforms: [
       ...makeBase(2400),
-      { x: 850, y: 520, w: 140, h: 16 },
+      { x: 650, y: 520, w: 140, h: 16 },
       { x: 2100, y: 0, w: 16, h: GROUND_Y, ghostable: true },
     ],
     // EXAMPLE: a floor hole at x=1100, width 80
-    floorHoles: [{ x: 200, w: 150 }, { x: 750, w: 400 }, { x: 1350, w: 500 }],
-    spikeZones: [{ x: 500, w: 100, h: 18 }],
-    orbs: [
-      { x: 1600, y: 640, type: 'red' },
+    floorHoles: [{ x: 200, w: 150 }, { x: 550, w: 400 }],
+    spikeZones: [{ x: 1150, w: 250, h: 18 }],
+    orbs: 
       { x: 2000, y: 655, type: 'white' }
     ],
     // EXAMPLE: an enemy on the platform at x=860,y=580 → enemy y = 580-32 = 548
@@ -198,24 +197,17 @@ const LEVELS = [
     spawnY: FLOOR_SPAWN_Y,
     platforms: [
       ...makeBase(2400),
-      { x: 150, y: 590, w: 130, h: 16 },
-      { x: 380, y: 550, w: 120, h: 16, ghostable: true },
-      { x: 600, y: 510, w: 130, h: 16 },
-      { x: 800, y: 0, w: 16, h: GROUND_Y, ghostable: true }, // ghostable wall
-      { x: 900, y: 580, w: 140, h: 16 },
-      { x: 1120, y: 540, w: 120, h: 16, ghostable: true },
-      { x: 1350, y: 500, w: 100, h: 16 },
-      { x: 1580, y: 560, w: 130, h: 16 },
-      { x: 1800, y: 520, w: 110, h: 16, ghostable: true },
-      { x: 2050, y: 580, w: 120, h: 16 },
+      { x: 850, y: 520, w: 140, h: 16 },
+      { x: 2100, y: 0, w: 16, h: GROUND_Y, ghostable: true },
     ],
-    floorHoles: [],
-    spikeZones: [],
+    // EXAMPLE: a floor hole at x=1100, width 80
+    floorHoles: [{ x: 200, w: 150 }, { x: 750, w: 400 }, { x: 1350, w: 500 }],
+    spikeZones: [{ x: 500, w: 100, h: 18 }],
     orbs: [
-      { x: 760, y: 480, type: 'white' },
-      { x: 840, y: 480, type: 'white' },
-      { x: 1200, y: 510, type: 'red' },
+      { x: 1600, y: 640, type: 'red' },
+      { x: 2000, y: 655, type: 'white' }
     ],
+    // EXAMPLE: an enemy on the platform at x=860,y=580 → enemy y = 580-32 = 548
     enemies: [],
     finishX: 2300, finishY: FLOOR_SPAWN_Y - 20,
   },
