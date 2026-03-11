@@ -76,7 +76,7 @@ const CONFIG = {
 
   DOT_BOUNCE: -5.3,
   GHOST_DURATION: 120,
-  ORB_RADIUS: 8,
+  ORB_RADIUS: 12,
   ORB_RESPAWN_TIME: 240,
   MAX_HP: 5,
   INVINCIBILITY_FRAMES: 90,
@@ -1537,6 +1537,13 @@ const ORB_COLORS = {
   grey:   { fill: '#555566', stroke: '#888899', glow: 'rgba(100, 100, 110, 0.2)' },
   purple: { fill: '#552277', stroke: '#8844bb', glow: 'rgba(100, 40, 150, 0.25)' },
 };
+ 
+const orbImages = {
+  Ghosting: loadImage("../assets/orbs/Ghosting.png"),
+  NoGhosting: loadImage("../assets/orbs/NoGhosting.png"),
+  Slowdown: loadImage("../assets/orbs/Slowdown.png")
+};
+ 
 function drawOrbs() {
   for (const orb of orbObjects) {
     if (!orb.active) continue;
