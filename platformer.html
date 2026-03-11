@@ -66,7 +66,7 @@ const CONFIG = {
 
   DASH_SPEED: 13,
   DASH_DURATION: 15,
-  DASH_COOLDOWN: 18,
+  DASH_COOLDOWN: 15,
 
   HIT_RANGE: 36,
   HIT_THICKNESS: 26,
@@ -79,7 +79,7 @@ const CONFIG = {
   ORB_RADIUS: 8,
   ORB_RESPAWN_TIME: 240,
   MAX_HP: 5,
-  INVINCIBILITY_FRAMES: 30,
+  INVINCIBILITY_FRAMES: 45,
   FALL_DAMAGE: 2,
 
   SPIKE_TRIANGLE_H: 16,
@@ -171,23 +171,23 @@ function makeBase(arenaW) {
 const LEVELS = [
   // ── LEVEL 1 — Tutorial: basic platforms, one manual enemy, one manual hole ──
   {
-    arenaW: 2400,
+    arenaW: 2000,
     spawnX: LEFT_SPAWN_X,
     spawnY: FLOOR_SPAWN_Y,
     platforms: [
-      ...makeBase(2400),
+      ...makeBase(2000),
       { x: 650, y: 520, w: 140, h: 16 },
-      { x: 2100, y: 0, w: 16, h: GROUND_Y, ghostable: true },
+      { x: 1775, y: 0, w: 16, h: GROUND_Y, ghostable: true },
     ],
     // EXAMPLE: a floor hole at x=1100, width 80
-    floorHoles: [{ x: 200, w: 150 }, { x: 550, w: 400 }],
-    spikeZones: [{ x: 1150, w: 325, h: 18 }],
+    floorHoles: [{ x: 200, w: 150 }, { x: 550, w: 450 }],
+    spikeZones: [{ x: 1200, w: 325, h: 18 }],
     orbs: [ 
-      { x: 2000, y: 655, type: 'white' },
+      { x: 1700, y: 655, type: 'white' },
     ],
     // EXAMPLE: an enemy on the platform at x=860,y=580 → enemy y = 580-32 = 548
     enemies: [],
-    finishX: 2300, finishY: FLOOR_SPAWN_Y - 20,
+    finishX: 1900, finishY: FLOOR_SPAWN_Y - 20,
   },
 
   // ── LEVEL 2 — Introduce white orb + ghostable walls ──
