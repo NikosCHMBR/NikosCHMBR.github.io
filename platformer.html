@@ -176,14 +176,13 @@ const LEVELS = [
     spawnY: FLOOR_SPAWN_Y,
     platforms: [
       ...makeBase(2400),
-      { x: 700, y: 520, w: 140, h: 16 },
-      { x: 1960, y: 580, w: 120, h: 16 },
+      { x: 1100, y: 520, w: 140, h: 16 },
     ],
     // EXAMPLE: a floor hole at x=1100, width 80
-    floorHoles: [{ x: 200, w: 160 }, { x: 600, w: 400 }, { x: 1200, w: 500 }],
-    spikeZones: [],
+    floorHoles: [{ x: 200, w: 150 }, { x: 1000, w: 400 }, { x: 1600, w: 500 }],
+    spikeZones: [{ x: 450, w: 150, h: 18 }],
     orbs: [
-      { x: 1550, y: 640, type: 'red' },
+      { x: 1850, y: 640, type: 'red' },
     ],
     // EXAMPLE: an enemy on the platform at x=860,y=580 → enemy y = 580-32 = 548
     enemies: [],
