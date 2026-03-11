@@ -192,29 +192,29 @@ const LEVELS = [
 
   // ── LEVEL 2 — Introduce white orb + ghostable walls ──
   {
-    arenaW: 2400,
+    arenaW: 2200,
     spawnX: LEFT_SPAWN_X,
     spawnY: FLOOR_SPAWN_Y,
     platforms: [
-      ...makeBase(2400),
+      ...makeBase(2200),
       { x: 200, y: 640, w: 200, h: 40 },
       { x: 1100, y: 425, w: 75, h: 255},
       { x: 1175, y: 510, w: 75, h: 170},
       { x: 1250, y: 595, w: 75, h: 85},
-      { x: 2050, y: 300, w: 350, h: 380},
+      { x: 2050, y: 180, w: 150, h: 500},
     ],
     // EXAMPLE: a floor hole at x=1100, width 80
     floorHoles: [{ x: 400, w: 475 }],
     spikeZones: [{ x: 1450, w: 400, h: 18 }],
     orbs: [
       { x: 1075, y: 525, type: 'red' },
-      { x: 2025, y: 525, type: 'red' },
-      { x: 2025, y: 425, type: 'red' },
-      { x: 2025, y: 350, type: 'red' },
+      { x: 2025, y: 500, type: 'red' },
+      { x: 2025, y: 375, type: 'red' },
+      { x: 2025, y: 250, type: 'red' },
     ],
     // EXAMPLE: an enemy on the platform at x=860,y=580 → enemy y = 580-32 = 548
     enemies: [],
-    finishX: 2250, finishY: 275,
+    finishX: 2125, finishY: 155,
   },
 
   // ── LEVEL 3 — Introduce spikes ──
