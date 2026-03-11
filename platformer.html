@@ -37,7 +37,7 @@
 
 <div id="gameWrapper">
   <canvas id="gameCanvas"></canvas>
-  <div id="controls">ARROWS - move <br> SPACE - jump <br> W - dash <br> R - hit <br> E - shoot</div>
+  <div id="controls">ARROWS move · SPACE jump · W dash · R hit · E shoot</div>
 </div>
 
 <script>
@@ -1643,8 +1643,12 @@ function drawStartScreen() {
   const pulse = 0.5 + 0.3 * Math.sin(Date.now() * 0.004);
   ctx.fillStyle = `rgba(200, 200, 210, ${pulse})`; ctx.font = '16px Courier New';
   ctx.fillText('Click to start', CONFIG.VIEW_W / 2, CONFIG.VIEW_H / 2 + 20);
-  ctx.fillStyle = 'rgba(255,255,255,0.15)'; ctx.font = '12px Courier New';
-  ctx.fillText('ARROWS move · SPACE jump · W dash · R hit · E shoot', CONFIG.VIEW_W / 2, CONFIG.VIEW_H / 2 + 60);
+  ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.font = '14px Courier New';
+  ctx.fillText('ARROWS - Move', CONFIG.VIEW_W / 2, CONFIG.VIEW_H / 2 + 60);
+  ctx.fillText('SPACE - Jump', CONFIG.VIEW_W / 2, CONFIG.VIEW_H / 2 + 80);
+  ctx.fillText('W - Dash', CONFIG.VIEW_W / 2, CONFIG.VIEW_H / 2 + 100);
+  ctx.fillText('R - Hit', CONFIG.VIEW_W / 2, CONFIG.VIEW_H / 2 + 120);
+  ctx.fillText('E - Shoot', CONFIG.VIEW_W / 2, CONFIG.VIEW_H / 2 + 140);
   ctx.textAlign = 'left';
 }
 function drawTransitionBanner() {
