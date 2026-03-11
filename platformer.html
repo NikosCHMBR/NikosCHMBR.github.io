@@ -76,7 +76,7 @@ const CONFIG = {
 
   DOT_BOUNCE: -5.3,
   GHOST_DURATION: 120,
-  ORB_RADIUS: 12,
+  ORB_RADIUS: 8,
   ORB_RESPAWN_TIME: 240,
   MAX_HP: 5,
   INVINCIBILITY_FRAMES: 90,
@@ -176,14 +176,18 @@ const LEVELS = [
     spawnY: FLOOR_SPAWN_Y,
     platforms: [
       ...makeBase(2400),
-      { x: 500, y: 560, w: 140, h: 16 },
-      { x: 800, y: 560, w: 120, h: 16 },
+      { x: 200, y: 600, w: 140, h: 16 },
+      { x: 420, y: 560, w: 120, h: 16 },
+      { x: 640, y: 520, w: 130, h: 16 },
+      { x: 860, y: 580, w: 140, h: 16 },
+      { x: 1080, y: 540, w: 120, h: 16 },
+      { x: 1300, y: 500, w: 130, h: 16 },
+      { x: 1520, y: 560, w: 120, h: 16 },
+      { x: 1740, y: 520, w: 140, h: 16 },
+      { x: 1960, y: 580, w: 120, h: 16 },
     ],
     // EXAMPLE: a floor hole at x=1100, width 80
-    floorHoles: [
-      { x: 200, w: 160 },
-      { x: 400, w: 500 },
-    ],
+    floorHoles: [{ x: 1100, w: 80 }],
     spikeZones: [],
     orbs: [
       { x: 500, y: 530, type: 'black' },
@@ -1533,13 +1537,6 @@ const ORB_COLORS = {
   grey:   { fill: '#555566', stroke: '#888899', glow: 'rgba(100, 100, 110, 0.2)' },
   purple: { fill: '#552277', stroke: '#8844bb', glow: 'rgba(100, 40, 150, 0.25)' },
 };
- 
-const orbImages = {
-  Ghosting: loadImage("../assets/orbs/Ghosting.png"),
-  NoGhosting: loadImage("../assets/orbs/NoGhosting.png"),
-  Slowdown: loadImage("../assets/orbs/Slowdown.png")
-};
- 
 function drawOrbs() {
   for (const orb of orbObjects) {
     if (!orb.active) continue;
