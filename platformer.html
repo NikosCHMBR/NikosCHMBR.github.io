@@ -201,16 +201,20 @@ const LEVELS = [
       { x: 1100, y: 425, w: 75, h: 255},
       { x: 1175, y: 510, w: 75, h: 170},
       { x: 1250, y: 595, w: 75, h: 85},
+      { x: 2050, y: 300, w: 350, h: 380},
     ],
     // EXAMPLE: a floor hole at x=1100, width 80
     floorHoles: [{ x: 400, w: 475 }],
     spikeZones: [{ x: 1450, w: 400, h: 18 }],
     orbs: [
       { x: 1075, y: 525, type: 'red' },
+      { x: 2025, y: 525, type: 'red' },
+      { x: 2025, y: 425, type: 'red' },
+      { x: 2025, y: 350, type: 'red' },
     ],
     // EXAMPLE: an enemy on the platform at x=860,y=580 → enemy y = 580-32 = 548
     enemies: [],
-    finishX: 2300, finishY: FLOOR_SPAWN_Y - 20,
+    finishX: 2250, finishY: 275,
   },
 
   // ── LEVEL 3 — Introduce spikes ──
