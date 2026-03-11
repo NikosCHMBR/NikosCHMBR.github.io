@@ -94,7 +94,7 @@ const CONFIG = {
 
   // Shooting
   MAX_SHOTS: 3,
-  SHOT_SPEED: 6,        // 1.5x MAX_MOVE_SPEED
+  SHOT_SPEED: 8,        // 2x MAX_MOVE_SPEED
   SHOT_COOLDOWN: 7,
   SHOT_HOVER_FRAMES: 6,
   SHOT_KNOCKBACK: 2,
@@ -197,15 +197,14 @@ const LEVELS = [
     spawnY: FLOOR_SPAWN_Y,
     platforms: [
       ...makeBase(2400),
-      { x: 850, y: 520, w: 140, h: 16 },
-      { x: 2100, y: 0, w: 16, h: GROUND_Y, ghostable: true },
+      { x: 200, y: 660, w: 150, h: 30 },
+      { x: 1100, y: 460, w: 16, h: 200},
     ],
     // EXAMPLE: a floor hole at x=1100, width 80
-    floorHoles: [{ x: 200, w: 150 }, { x: 750, w: 400 }, { x: 1350, w: 500 }],
-    spikeZones: [{ x: 500, w: 100, h: 18 }],
+    floorHoles: [{ x: 350, w: 500 }],
+    spikeZones: [],
     orbs: [
-      { x: 1600, y: 640, type: 'red' },
-      { x: 2000, y: 655, type: 'white' },
+      { x: 1090, y: 520, type: 'red' },
     ],
     // EXAMPLE: an enemy on the platform at x=860,y=580 → enemy y = 580-32 = 548
     enemies: [],
