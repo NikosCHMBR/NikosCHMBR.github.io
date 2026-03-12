@@ -224,19 +224,19 @@ const LEVELS = [
     spawnY: FLOOR_SPAWN_Y,
     platforms: [
       ...makeBase(2150),
-      { x: 267, y: 400, w: 16, h: 320},
-      { x: 267, y: 250, w: 16, h: 150, ghostable: true },
-      { x: 267, y: 0, w: 16, h: 250},
-      { x: 650, y: 520, w: 140, h: 16 },
+      { x: 917, y: 400, w: 16, h: 320},
+      { x: 917, y: 250, w: 16, h: 150, ghostable: true },
+      { x: 917, y: 0, w: 16, h: 250},
+      { x: 300, y: 520, w: 140, h: 16 },
       { x: 1300, y: 520, w: 150, h: 16 },
       { x: 1500, y: 400, w: 350, h: 16 },
       { x: 2000, y: 300, w: 150, h: 420 },
     ],
     // EXAMPLE: a floor hole at x=1100, width 80
-    floorHoles: [{ x: 200, w: 150 }, { x: 550, w: 450 }, { x: 1200, w: 1000 }],
-    spikeZones: [{ x: 650, y: 502, w: 140, h: 18 }, { x: 1300, y: 502, w: 150, h: 18 }, { x: 1500, y: 382, w: 350, h: 18 }],
+    floorHoles: [{ x: 200, w: 450 }, { x: 850, w: 150 }, { x: 1200, w: 1000 }],
+    spikeZones: [{ x: 300, y: 502, w: 140, h: 18 }, { x: 1300, y: 502, w: 150, h: 18 }, { x: 1500, y: 382, w: 350, h: 18 }],
     orbs: [ 
-      { x: 247, y: 550, type: 'white' },
+      { x: 897, y: 550, type: 'white' },
     ],
     // EXAMPLE: an enemy on the platform at x=860,y=580 → enemy y = 580-32 = 548
     enemies: [],
@@ -324,31 +324,28 @@ const LEVELS = [
 
   // ── LEVEL 7 — Shooting introduction ──
   {
-    arenaW: 2400,
+    arenaW: 2150,
     spawnX: LEFT_SPAWN_X,
     spawnY: FLOOR_SPAWN_Y,
     platforms: [
-      ...makeBase(2400),
-      { x: 200, y: 580, w: 140, h: 16 },
-      { x: 500, y: 550, w: 130, h: 16 },
-      { x: 800, y: 520, w: 120, h: 16 },
-      { x: 1100, y: 580, w: 140, h: 16 },
-      { x: 1400, y: 540, w: 130, h: 16 },
-      { x: 1700, y: 570, w: 120, h: 16 },
-      { x: 2000, y: 550, w: 140, h: 16 },
+      ...makeBase(2150),
+      { x: 267, y: 400, w: 16, h: 320},
+      { x: 267, y: 250, w: 16, h: 150, ghostable: true },
+      { x: 267, y: 0, w: 16, h: 250},
+      { x: 650, y: 520, w: 140, h: 16 },
+      { x: 1300, y: 520, w: 150, h: 16 },
+      { x: 1500, y: 400, w: 350, h: 16 },
+      { x: 2000, y: 300, w: 150, h: 420 },
     ],
-    floorHoles: [],
-    spikeZones: [],
-    orbs: [
-      { x: 650, y: 490, type: 'black' },
-      { x: 1300, y: 550, type: 'red' },
+    // EXAMPLE: a floor hole at x=1100, width 80
+    floorHoles: [{ x: 200, w: 150 }, { x: 550, w: 450 }, { x: 1200, w: 1000 }],
+    spikeZones: [{ x: 650, y: 502, w: 140, h: 18 }, { x: 1300, y: 502, w: 150, h: 18 }, { x: 1500, y: 382, w: 350, h: 18 }],
+    orbs: [ 
+      { x: 247, y: 550, type: 'white' },
     ],
-    enemies: [
-      { x: 550, y: 550 - 32 },
-      { x: 1150, y: 580 - 32 },
-      { x: 1750, y: 570 - 32 },
-    ],
-    finishX: 2300, finishY: FLOOR_SPAWN_Y - 20,
+    // EXAMPLE: an enemy on the platform at x=860,y=580 → enemy y = 580-32 = 548
+    enemies: [],
+    finishX: 2075, finishY: 275,
   },
 
   // ── LEVEL 8 — Mixed mechanics ──
