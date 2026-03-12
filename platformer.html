@@ -936,7 +936,7 @@ function loadLevel(n) {
     else platforms.push({ ...p });
   }
   floorHoleList = (lvl.floorHoles || []).map(h => ({ x: h.x, y: GROUND_Y, w: h.w, h: CONFIG.GROUND_H }));
-  spikeList = (lvl.spikeZones || []).map(sz => ({ x: sz.x, y: GROUND_Y - sz.h, w: sz.w, h: sz.h }));
+  spikeList = (lvl.spikeZones || []).map(sz => ({ x: sz.x, y: sz.y, w: sz.w, h: sz.h }));
   orbObjects = (lvl.orbs || []).map(o => ({ x: o.x, y: o.y, type: o.type, radius: CONFIG.ORB_RADIUS, active: true, respawnTimer: 0 }));
   finishOrb = { x: lvl.finishX, y: lvl.finishY, radius: CONFIG.ORB_RADIUS + 2, active: true };
   enemyInitData = (lvl.enemies || []).map(e => ({ x: e.x, y: e.y }));
