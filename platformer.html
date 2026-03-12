@@ -245,28 +245,31 @@ const LEVELS = [
 
   // ── LEVEL 4 — Yellow orbs introduction ──
   {
-    arenaW: 1080,
+    arenaW: 2400,
     spawnX: LEFT_SPAWN_X,
     spawnY: FLOOR_SPAWN_Y,
     platforms: [
-      ...makeBase(1080),
-      { x: 0, y: 350, w: 300, h: 16 },
-      { x: 1000, y: 500, w: 80, h: 16 },
-      { x: 280, y: 100, w: 800, h: 16 },
-      { x: 0, y: 225, w: 75, h: 16 },
-      { x: 280, y: 0, w: 20, h: 350, ghostable: true },
+      ...makeBase(2400),
+      { x: 200, y: 580, w: 140, h: 16 },
+      { x: 500, y: 550, w: 130, h: 16 },
+      { x: 800, y: 520, w: 120, h: 16 },
+      { x: 1100, y: 580, w: 140, h: 16 },
+      { x: 1400, y: 540, w: 130, h: 16 },
+      { x: 1700, y: 570, w: 120, h: 16 },
+      { x: 2000, y: 550, w: 140, h: 16 },
     ],
-    floorHoles: [{ x: 300, w: 780 }],
+    floorHoles: [],
     spikeZones: [],
     orbs: [
-      { x: 600, y: 625, type: 'red' },
-      { x: 800, y: 550, type: 'red' },
-      { x: 875, y: 375, type: 'red' },
-      { x: 700, y: 330, type: 'red' },
-      { x: 450, y: 330, type: 'white' },
+      { x: 650, y: 490, type: 'black' },
+      { x: 1300, y: 550, type: 'red' },
     ],
-    enemies: [],
-    finishX: 800, finishY: 75,
+    enemies: [
+      { x: 550, y: 550 - 32 },
+      { x: 1150, y: 580 - 32 },
+      { x: 1750, y: 570 - 32 },
+    ],
+    finishX: 2300, finishY: FLOOR_SPAWN_Y - 20,
   },
 
   // ── LEVEL 5 — Grey orb introduction ──
