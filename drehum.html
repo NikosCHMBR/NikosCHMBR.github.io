@@ -37,6 +37,17 @@
             display: flex;
             gap: 2rem;
             margin-top: 2rem;
+                
+            opacity: 0;
+            animation: showOptions 1s ease-in 3s forwards;
+        }
+        @keyframes showOptions {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
         }
         .options a {
             display: block;
