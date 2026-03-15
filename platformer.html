@@ -41,46 +41,72 @@
 </div>
 
 <script>
-// ============================================================
-//  CONFIGURATION
-// ============================================================
+
+// ╔══════════════════════════════════════════════════════════════╗
+// ║  CONFIGURATION                                              ║
+// ║  Global tuning values. Per-level overrides where noted.     ║
+// ╚══════════════════════════════════════════════════════════════╝
+
 const CONFIG = {
+  // --- Display ---
   VIEW_W: 1280,
   VIEW_H: 720,
+
+  // --- Physics ---
   GRAVITY: 0.5,
   TERMINAL_VELOCITY: 12,
   FIXED_DT: 1000 / 60,
+
+  // --- Player size ---
   PLAYER_W: 24,
   PLAYER_H: 32,
+
+  // --- Movement ---
   MOVE_ACCEL: 1.6,
   MOVE_DECEL: 0.45,
   MAX_MOVE_SPEED: 4,
+
+  // --- Jump ---
   JUMP_VELOCITY: -10.6,
   JUMP_CUT_MULTIPLIER: 0.4,
   COYOTE_TIME: 6,
   JUMP_BUFFER: 6,
+
+  // --- Dash ---
   DASH_SPEED: 14,
   DASH_DURATION: 14,
   DASH_COOLDOWN: 15,
+
+  // --- Melee hit ---
   HIT_RANGE: 36,
   HIT_THICKNESS: 26,
   HIT_ACTIVE_FRAMES: 6,
   HIT_COOLDOWN: 18,
   HIT_KNOCKBACK: 1.8,
+
+  // --- Orbs ---
   DOT_BOUNCE: -5.3,
   GHOST_DURATION: 120,
-  ORB_RADIUS: 14.5,
+  ORB_RADIUS: 14.5,       // 29px diameter
   ORB_RESPAWN_TIME: 240,
-  MAX_HP: 5,
+
+  // --- Health ---
+  MAX_HP: 5,               // default; overridable per level via hp
   INVINCIBILITY_FRAMES: 45,
   FALL_DAMAGE: 2,
+
+  // --- Environment ---
   SPIKE_TRIANGLE_H: 16,
   GROUND_H: 40,
+
+  // --- Enemies ---
   ENEMY_SPEED: 1.5,
   ENEMY_MAX_HP: 3,
   ENEMY_KNOCKBACK: 4,
   ENEMY_KNOCKBACK_Y: -3,
   ENEMY_SPAWN_DIST: 100,
+
+  // --- Shooting ---
   MAX_SHOTS: 3,
   SHOT_SPEED: 8,
   SHOT_COOLDOWN: 7,
@@ -88,55 +114,88 @@ const CONFIG = {
   SHOT_KNOCKBACK: 2,
   SHOT_ENEMY_DAMAGE: 3,
   KILLS_PER_REFUND: 2,
-  SHOOT_UNLOCK_LEVEL: 9,
+  SHOOT_UNLOCK_LEVEL: 9,  // 0-indexed: shooting from level 10+
+  BULLET_W: 18,            // bullet hitbox width (along travel)
+  BULLET_H: 10,            // bullet hitbox height (perpendicular)
+
+  // --- Slow time (SlowMo orb) ---
   SLOW_DURATION_MS: 3000,
   SLOW_SCALE: 0.5,
+
+  // --- Restart button position ---
   RESTART_BTN_X: 1280 - 20 - 70,
   RESTART_BTN_Y: 32,
   RESTART_BTN_W: 70,
   RESTART_BTN_H: 26,
-  BG_COLOR: '#0f1019',
-  PLAYER_COLOR: '#e8533f',
-  PLAYER_OUTLINE: '#ff7b6b',
-  PLATFORM_COLOR: '#1e2233',
-  PLATFORM_TOP: '#2a3050',
-  GROUND_COLOR: '#1a1f30',
-  GROUND_TOP: '#252d45',
-  GRID_COLOR: 'rgba(255,255,255,0.015)',
-  HIT_COLOR: '#ffcc44',
-  HIT_COLOR_FADE: 'rgba(255, 204, 68, 0.3)',
-  CHARGE_FULL: '#44ddaa',
-  CHARGE_EMPTY: '#333344',
-  HEART_FULL: '#e8533f',
-  HEART_EMPTY: '#2a2a3a',
-  SPIKE_COLOR: '#999aaa',
-  SPIKE_OUTLINE: '#777788',
-  ENEMY_COLOR: '#6b1a1a',
-  ENEMY_OUTLINE: '#8b2a2a',
-  TRIANGLE_COLOR: '#2a2a40',
+
+  // --- Colors ---
+  BG_COLOR:         '#0f1019',
+  PLAYER_COLOR:     '#e8533f',
+  PLAYER_OUTLINE:   '#ff7b6b',
+  PLATFORM_COLOR:   '#1e2233',
+  PLATFORM_TOP:     '#2a3050',
+  GROUNDED_TOP:     '#3a1a4a',  // dark purple top for "grounded" platforms
+  GROUND_COLOR:     '#1a1f30',
+  GROUND_TOP:       '#252d45',
+  GRID_COLOR:       'rgba(255,255,255,0.015)',
+  HIT_COLOR:        '#ffcc44',
+  HIT_COLOR_FADE:   'rgba(255, 204, 68, 0.3)',
+  CHARGE_FULL:      '#44ddaa',
+  CHARGE_EMPTY:     '#333344',
+  HEART_FULL:       '#e8533f',
+  HEART_EMPTY:      '#2a2a3a',
+  SPIKE_COLOR:      '#999aaa',
+  SPIKE_OUTLINE:    '#777788',
+  ENEMY_COLOR:      '#6b1a1a',
+  ENEMY_OUTLINE:    '#8b2a2a',
+  TRIANGLE_COLOR:   '#2a2a40',
   TRIANGLE_OUTLINE: '#3a3a55',
 };
 
-const GROUND_Y = CONFIG.VIEW_H - CONFIG.GROUND_H;
-const FLOOR_SPAWN_Y = GROUND_Y - CONFIG.PLAYER_H;
-const LEFT_SPAWN_X = 30;
+// Derived constants
+const GROUND_Y       = CONFIG.VIEW_H - CONFIG.GROUND_H;
+const FLOOR_SPAWN_Y  = GROUND_Y - CONFIG.PLAYER_H;
+const LEFT_SPAWN_X   = 30;
 
-// ============================================================
-//  IMAGE PRELOADING
-// ============================================================
+
+// ╔══════════════════════════════════════════════════════════════╗
+// ║  IMAGE PRELOADING                                           ║
+// ║  All orb, checkpoint, and bullet PNGs                       ║
+// ╚══════════════════════════════════════════════════════════════╝
+
 const ORB_TYPES = [
-  'Ghosting','NoGhosting','SlowMo','Boost1','Boost2','Boost3',
-  'SetAir1','SetAir2','SetAir3','AddAir1','AddAir2','AddAir3',
-  'SetAir1NB','SetAir2NB','SetAir3NB','AddAir1NB','AddAir2NB','AddAir3NB',
+  'Ghosting', 'NoGhosting', 'SlowMo', 'Teleport',
+  'Boost1', 'Boost2', 'Boost3',
+  'SetAir1', 'SetAir2', 'SetAir3',
+  'AddAir1', 'AddAir2', 'AddAir3',
+  'SetAir1NB', 'SetAir2NB', 'SetAir3NB',
+  'AddAir1NB', 'AddAir2NB', 'AddAir3NB',
 ];
+
 const orbImages = {};
-for (const name of ORB_TYPES) { const img = new Image(); img.src = '../assets/orbs/' + name + '.png'; orbImages[name] = img; }
+for (const name of ORB_TYPES) {
+  const img = new Image();
+  img.src = '../assets/orbs/' + name + '.png';
+  orbImages[name] = img;
+}
+
 const checkpointImg = new Image();
 checkpointImg.src = '../assets/orbs/checkpoint.png';
 
-// ============================================================
-//  HELPER — ground + walls.  Optional groundY for tall levels.
-// ============================================================
+const bulletImg = new Image();
+bulletImg.src = '../assets/orbs/bullet.png';
+
+// Bullet orbs all share the bullet.png image
+orbImages['Bullet1'] = bulletImg;
+orbImages['Bullet2'] = bulletImg;
+orbImages['Bullet3'] = bulletImg;
+
+
+// ╔══════════════════════════════════════════════════════════════╗
+// ║  HELPER — generates ground + side walls                     ║
+// ║  Optional groundY parameter for levels taller than default  ║
+// ╚══════════════════════════════════════════════════════════════╝
+
 function makeBase(arenaW, groundY) {
   const gy = groundY !== undefined ? groundY : GROUND_Y;
   return [
@@ -146,324 +205,2230 @@ function makeBase(arenaW, groundY) {
   ];
 }
 
-// ============================================================
-//  LEVEL DEFINITIONS
-//
-//  Optional per-level fields:
-//    levelH          — world height (default CONFIG.VIEW_H)
-//    hp              — player max HP (default CONFIG.MAX_HP)
-//    finishCriteria  — 'default'|'killAll'|'activateAllOrbs'
-//    checkpoints     — [{x,y}, ...] (1-3, all must be cleared to finish)
-//    movingPlatforms — [{x1,y1,x2,y2,w,h,speed,ghostable?}]
-//    triangleBlocks  — [{x,y,w,h,facing:'left'|'right'}]
-// ============================================================
+
+// ╔══════════════════════════════════════════════════════════════╗
+// ║  LEVEL DEFINITIONS                                          ║
+// ║                                                             ║
+// ║  Per-level fields:                                          ║
+// ║    arenaW, spawnX, spawnY          — required                ║
+// ║    finishX, finishY                — required (finish orb)   ║
+// ║    platforms                       — required                ║
+// ║    floorHoles, spikeZones          — arrays (can be empty)   ║
+// ║    orbs                            — array of orb defs       ║
+// ║    enemies                         — array of {x, y}         ║
+// ║                                                             ║
+// ║  Optional per-level:                                        ║
+// ║    levelH          — world height (default CONFIG.VIEW_H)    ║
+// ║    hp              — max HP (default CONFIG.MAX_HP)          ║
+// ║    finishCriteria  — 'default'|'killAll'|'activateAllOrbs'   ║
+// ║    checkpoints     — [{x,y}] 1–3, all must be cleared       ║
+// ║    movingPlatforms — [{x1,y1,x2,y2,w,h,speed,ghostable?}]   ║
+// ║    triangleBlocks  — [{x,y,w,h,facing:'left'|'right'}]      ║
+// ║                                                             ║
+// ║  Platform flags:                                            ║
+// ║    ghostable: true   — passable while ghost is active        ║
+// ║    grounded: true    — player can't jump or dash on it       ║
+// ╚══════════════════════════════════════════════════════════════╝
+
 const LEVELS = [
-  {arenaW:2000,spawnX:LEFT_SPAWN_X,spawnY:FLOOR_SPAWN_Y,platforms:[...makeBase(2000),{x:650,y:520,w:140,h:16},{x:1775,y:0,w:16,h:GROUND_Y,ghostable:true}],floorHoles:[{x:200,w:150},{x:550,w:450}],spikeZones:[{x:1200,y:662,w:325,h:18}],orbs:[{x:1700,y:655,type:'Ghosting'}],enemies:[],finishX:1900,finishY:FLOOR_SPAWN_Y-20},
-  {arenaW:2200,spawnX:LEFT_SPAWN_X,spawnY:FLOOR_SPAWN_Y,platforms:[...makeBase(2200),{x:200,y:640,w:200,h:40},{x:1100,y:425,w:75,h:255},{x:1175,y:510,w:75,h:170},{x:1250,y:595,w:75,h:85},{x:2050,y:180,w:150,h:500}],floorHoles:[{x:400,w:475}],spikeZones:[{x:1450,y:662,w:400,h:18}],orbs:[{x:1075,y:525,type:'SetAir1'},{x:2025,y:500,type:'SetAir1'},{x:2025,y:375,type:'SetAir1'},{x:2025,y:250,type:'SetAir1'}],enemies:[],finishX:2125,finishY:155},
-  {arenaW:2150,spawnX:LEFT_SPAWN_X,spawnY:FLOOR_SPAWN_Y,platforms:[...makeBase(2150),{x:917,y:400,w:16,h:320},{x:917,y:250,w:16,h:150,ghostable:true},{x:917,y:0,w:16,h:250},{x:300,y:520,w:140,h:16},{x:1300,y:520,w:150,h:16},{x:1500,y:400,w:350,h:16},{x:2000,y:300,w:150,h:420}],floorHoles:[{x:200,w:450},{x:850,w:150},{x:1200,w:1000}],spikeZones:[{x:300,y:502,w:140,h:18},{x:1300,y:502,w:150,h:18},{x:1500,y:382,w:350,h:18}],orbs:[{x:897,y:550,type:'Ghosting'}],enemies:[],finishX:2075,finishY:275},
-  {arenaW:2400,spawnX:LEFT_SPAWN_X,spawnY:FLOOR_SPAWN_Y,platforms:[...makeBase(2400),{x:200,y:580,w:140,h:16},{x:500,y:550,w:130,h:16},{x:800,y:520,w:120,h:16},{x:1100,y:580,w:140,h:16},{x:1400,y:540,w:130,h:16},{x:1700,y:570,w:120,h:16},{x:2000,y:550,w:140,h:16}],floorHoles:[],spikeZones:[],orbs:[{x:650,y:490,type:'SetAir1NB'},{x:1300,y:550,type:'SetAir1'}],enemies:[{x:550,y:550-32},{x:1150,y:580-32},{x:1750,y:570-32}],finishX:2300,finishY:FLOOR_SPAWN_Y-20},
-  {arenaW:1750,spawnX:LEFT_SPAWN_X,spawnY:FLOOR_SPAWN_Y,platforms:[...makeBase(1750),{x:1600,y:180,w:150,h:500}],floorHoles:[{x:200,w:925}],spikeZones:[],orbs:[{x:500,y:620,type:'SetAir1'},{x:650,y:620,type:'SetAir1'},{x:800,y:620,type:'SetAir1'},{x:950,y:620,type:'SetAir1'},{x:1500,y:500,type:'SetAir1'},{x:1450,y:375,type:'SetAir1'},{x:1550,y:275,type:'SetAir1'}],enemies:[],finishX:1675,finishY:155},
-  {arenaW:1080,spawnX:LEFT_SPAWN_X,spawnY:FLOOR_SPAWN_Y,platforms:[...makeBase(1080),{x:0,y:350,w:300,h:16},{x:1000,y:500,w:80,h:16},{x:280,y:100,w:800,h:16},{x:0,y:225,w:75,h:16},{x:280,y:0,w:20,h:350,ghostable:true}],floorHoles:[{x:300,w:780}],spikeZones:[],orbs:[{x:600,y:625,type:'SetAir1'},{x:800,y:550,type:'SetAir1'},{x:875,y:375,type:'SetAir1'},{x:700,y:330,type:'SetAir1'},{x:450,y:330,type:'Ghosting'}],enemies:[],finishX:800,finishY:75},
-  {arenaW:2150,spawnX:LEFT_SPAWN_X,spawnY:FLOOR_SPAWN_Y,platforms:[...makeBase(2150),{x:267,y:400,w:16,h:320},{x:267,y:250,w:16,h:150,ghostable:true},{x:267,y:0,w:16,h:250},{x:650,y:520,w:140,h:16},{x:1300,y:520,w:150,h:16},{x:1500,y:400,w:350,h:16},{x:2000,y:300,w:150,h:420}],floorHoles:[{x:200,w:150},{x:550,w:450},{x:1200,w:1000}],spikeZones:[{x:650,y:502,w:140,h:18},{x:1300,y:502,w:150,h:18},{x:1500,y:382,w:350,h:18}],orbs:[{x:247,y:550,type:'Ghosting'}],enemies:[],finishX:2075,finishY:275},
-  {arenaW:2800,spawnX:LEFT_SPAWN_X,spawnY:FLOOR_SPAWN_Y,platforms:[...makeBase(2800),{x:200,y:590,w:130,h:16},{x:450,y:550,w:120,h:16,ghostable:true},{x:700,y:510,w:110,h:16},{x:950,y:570,w:130,h:16},{x:1200,y:530,w:120,h:16,ghostable:true},{x:1450,y:490,w:140,h:16},{x:1700,y:550,w:120,h:16},{x:1950,y:510,w:130,h:16,ghostable:true},{x:2200,y:570,w:120,h:16},{x:2500,y:530,w:140,h:16}],floorHoles:[{x:850,w:80}],spikeZones:[{x:1600,y:662,w:120,h:18}],orbs:[{x:600,y:480,type:'AddAir1'},{x:750,y:400,type:'AddAir1'},{x:1660,y:620,type:'SetAir1'},{x:2000,y:480,type:'Ghosting'}],enemies:[{x:1000,y:570-32},{x:2250,y:570-32}],finishX:2700,finishY:FLOOR_SPAWN_Y-20},
-  {arenaW:1600,spawnX:LEFT_SPAWN_X,spawnY:FLOOR_SPAWN_Y,platforms:[...makeBase(1600),{x:100,y:600,w:120,h:16},{x:300,y:520,w:100,h:16},{x:150,y:440,w:110,h:16},{x:350,y:360,w:100,h:16},{x:550,y:600,w:130,h:16},{x:750,y:530,w:120,h:16},{x:600,y:450,w:100,h:16},{x:800,y:380,w:110,h:16},{x:1000,y:580,w:130,h:16},{x:1200,y:520,w:120,h:16},{x:1050,y:440,w:100,h:16}],floorHoles:[],spikeZones:[],orbs:[{x:250,y:490,type:'AddAir1'},{x:250,y:410,type:'AddAir1'},{x:700,y:500,type:'SetAir1'},{x:700,y:420,type:'AddAir1'}],enemies:[],finishX:1300,finishY:440-32-20},
-  {arenaW:3200,spawnX:LEFT_SPAWN_X,spawnY:FLOOR_SPAWN_Y,platforms:[...makeBase(3200),{x:200,y:590,w:130,h:16},{x:450,y:560,w:120,h:16},{x:700,y:530,w:130,h:16},{x:950,y:590,w:140,h:16},{x:1200,y:550,w:120,h:16},{x:1450,y:510,w:130,h:16},{x:1700,y:570,w:120,h:16,ghostable:true},{x:1900,y:0,w:16,h:GROUND_Y,ghostable:true},{x:2000,y:580,w:140,h:16},{x:2250,y:540,w:130,h:16},{x:2500,y:570,w:120,h:16},{x:2750,y:530,w:140,h:16}],floorHoles:[{x:1550,w:90}],spikeZones:[{x:800,y:662,w:120,h:18}],orbs:[{x:860,y:620,type:'SetAir1'},{x:1860,y:540,type:'Ghosting'},{x:1940,y:540,type:'Ghosting'},{x:2400,y:510,type:'SlowMo'}],enemies:[{x:1000,y:590-32},{x:2300,y:540-32}],finishX:3100,finishY:FLOOR_SPAWN_Y-20},
-  {arenaW:2400,spawnX:LEFT_SPAWN_X,spawnY:FLOOR_SPAWN_Y,platforms:[...makeBase(2400),{x:180,y:600,w:130,h:16,ghostable:true},{x:420,y:560,w:120,h:16},{x:660,y:520,w:110,h:16,ghostable:true},{x:900,y:580,w:130,h:16},{x:1140,y:540,w:120,h:16},{x:1380,y:500,w:130,h:16,ghostable:true},{x:1620,y:560,w:120,h:16},{x:1860,y:520,w:140,h:16},{x:2100,y:580,w:120,h:16,ghostable:true}],floorHoles:[{x:500,w:70},{x:1500,w:90}],spikeZones:[{x:800,y:662,w:80,h:18}],orbs:[{x:840,y:620,type:'SetAir1'},{x:1300,y:470,type:'AddAir1'}],enemies:[{x:950,y:580-32}],finishX:2300,finishY:FLOOR_SPAWN_Y-20},
-  {arenaW:2800,spawnX:LEFT_SPAWN_X,spawnY:FLOOR_SPAWN_Y,platforms:[...makeBase(2800),{x:200,y:590,w:120,h:16},{x:450,y:550,w:130,h:16},{x:700,y:510,w:110,h:16},{x:950,y:570,w:120,h:16,ghostable:true},{x:1100,y:0,w:16,h:GROUND_Y,ghostable:true},{x:1200,y:580,w:140,h:16},{x:1450,y:540,w:120,h:16},{x:1700,y:500,w:130,h:16},{x:1950,y:560,w:120,h:16,ghostable:true},{x:2200,y:520,w:140,h:16},{x:2500,y:580,w:120,h:16}],floorHoles:[{x:1800,w:100}],spikeZones:[{x:600,y:662,w:80,h:18}],orbs:[{x:1060,y:530,type:'Ghosting'},{x:1140,y:530,type:'Ghosting'},{x:640,y:620,type:'SetAir1'},{x:2000,y:530,type:'NoGhosting'}],enemies:[{x:1500,y:540-32},{x:2250,y:520-32}],finishX:2700,finishY:FLOOR_SPAWN_Y-20},
-  {arenaW:2400,spawnX:LEFT_SPAWN_X,spawnY:FLOOR_SPAWN_Y,platforms:[...makeBase(2400),{x:150,y:600,w:120,h:16},{x:400,y:560,w:130,h:16,ghostable:true},{x:650,y:520,w:110,h:16},{x:900,y:580,w:120,h:16},{x:1150,y:540,w:130,h:16,ghostable:true},{x:1400,y:500,w:120,h:16},{x:1650,y:560,w:140,h:16},{x:1900,y:520,w:120,h:16},{x:2150,y:580,w:130,h:16}],floorHoles:[{x:350,w:80},{x:1050,w:70},{x:1850,w:90}],spikeZones:[],orbs:[{x:800,y:490,type:'SlowMo'},{x:1300,y:470,type:'AddAir1'}],enemies:[{x:700,y:520-32},{x:1700,y:560-32}],finishX:2300,finishY:FLOOR_SPAWN_Y-20},
-  {arenaW:3000,spawnX:LEFT_SPAWN_X,spawnY:FLOOR_SPAWN_Y,platforms:[...makeBase(3000),{x:200,y:590,w:130,h:16},{x:500,y:550,w:120,h:16},{x:800,y:510,w:140,h:16,ghostable:true},{x:1050,y:0,w:16,h:GROUND_Y,ghostable:true},{x:1150,y:570,w:130,h:16},{x:1400,y:530,w:120,h:16},{x:1650,y:490,w:110,h:16,ghostable:true},{x:1900,y:550,w:130,h:16},{x:2150,y:510,w:120,h:16},{x:2400,y:570,w:140,h:16},{x:2700,y:530,w:120,h:16}],floorHoles:[{x:700,w:80},{x:2000,w:100}],spikeZones:[{x:1300,y:662,w:100,h:18}],orbs:[{x:1010,y:480,type:'Ghosting'},{x:1090,y:480,type:'Ghosting'},{x:1350,y:620,type:'SetAir1'},{x:2300,y:480,type:'AddAir1'}],enemies:[{x:1200,y:570-32},{x:2450,y:570-32}],finishX:2900,finishY:FLOOR_SPAWN_Y-20},
-  {arenaW:2400,spawnX:LEFT_SPAWN_X,spawnY:FLOOR_SPAWN_Y,platforms:[...makeBase(2400),{x:200,y:600,w:100,h:16},{x:400,y:550,w:100,h:16},{x:600,y:500,w:100,h:16},{x:800,y:450,w:100,h:16},{x:1000,y:590,w:120,h:16},{x:1250,y:550,w:100,h:16,ghostable:true},{x:1500,y:510,w:120,h:16},{x:1750,y:560,w:100,h:16},{x:2000,y:520,w:130,h:16}],floorHoles:[{x:900,w:80}],spikeZones:[{x:1400,y:662,w:80,h:18}],orbs:[{x:350,y:470,type:'AddAir1'},{x:500,y:420,type:'AddAir1'},{x:1450,y:620,type:'SetAir1'},{x:1800,y:530,type:'SlowMo'}],enemies:[{x:1050,y:590-32},{x:2050,y:520-32}],finishX:2300,finishY:FLOOR_SPAWN_Y-20},
-  {arenaW:3200,spawnX:LEFT_SPAWN_X,spawnY:FLOOR_SPAWN_Y,platforms:[...makeBase(3200),{x:200,y:590,w:130,h:16},{x:500,y:550,w:120,h:16},{x:800,y:510,w:140,h:16},{x:1100,y:570,w:120,h:16,ghostable:true},{x:1300,y:0,w:16,h:GROUND_Y,ghostable:true},{x:1400,y:580,w:130,h:16},{x:1700,y:540,w:120,h:16},{x:2000,y:500,w:140,h:16},{x:2300,y:560,w:130,h:16},{x:2600,y:520,w:120,h:16},{x:2900,y:580,w:140,h:16}],floorHoles:[{x:650,w:100},{x:1900,w:80},{x:2500,w:70}],spikeZones:[{x:1000,y:662,w:80,h:18},{x:2200,y:662,w:80,h:18}],orbs:[{x:1260,y:540,type:'Ghosting'},{x:1340,y:540,type:'Ghosting'},{x:1040,y:620,type:'SetAir1'},{x:2240,y:620,type:'SetAir1'},{x:1800,y:510,type:'AddAir1'}],enemies:[{x:550,y:FLOOR_SPAWN_Y},{x:1450,y:580-32},{x:2050,y:500-32},{x:2650,y:520-32}],finishX:3100,finishY:FLOOR_SPAWN_Y-20},
-  {arenaW:2800,spawnX:LEFT_SPAWN_X,spawnY:FLOOR_SPAWN_Y,platforms:[...makeBase(2800),{x:200,y:600,w:120,h:16},{x:450,y:560,w:100,h:16,ghostable:true},{x:700,y:520,w:130,h:16},{x:950,y:480,w:110,h:16},{x:1200,y:570,w:120,h:16},{x:1450,y:530,w:130,h:16,ghostable:true},{x:1700,y:490,w:120,h:16},{x:1950,y:560,w:130,h:16},{x:2200,y:520,w:120,h:16},{x:2500,y:580,w:140,h:16}],floorHoles:[{x:400,w:90},{x:1600,w:80}],spikeZones:[{x:850,y:662,w:80,h:18},{x:2050,y:662,w:100,h:18}],orbs:[{x:890,y:620,type:'SetAir1'},{x:2100,y:620,type:'SetAir1'},{x:600,y:490,type:'SlowMo'},{x:1800,y:460,type:'NoGhosting'}],enemies:[{x:750,y:520-32},{x:1250,y:570-32},{x:2000,y:560-32}],finishX:2700,finishY:FLOOR_SPAWN_Y-20},
-  {arenaW:3000,spawnX:LEFT_SPAWN_X,spawnY:FLOOR_SPAWN_Y,platforms:[...makeBase(3000),{x:200,y:590,w:130,h:16},{x:500,y:550,w:120,h:16},{x:800,y:510,w:110,h:16,ghostable:true},{x:1050,y:0,w:16,h:GROUND_Y,ghostable:true},{x:1150,y:570,w:130,h:16},{x:1400,y:530,w:120,h:16,ghostable:true},{x:1650,y:490,w:140,h:16},{x:1900,y:0,w:16,h:GROUND_Y,ghostable:true},{x:2000,y:560,w:120,h:16},{x:2250,y:520,w:130,h:16},{x:2500,y:580,w:120,h:16},{x:2750,y:540,w:140,h:16}],floorHoles:[{x:600,w:80},{x:1750,w:100},{x:2400,w:70}],spikeZones:[{x:900,y:662,w:120,h:18}],orbs:[{x:1010,y:480,type:'Ghosting'},{x:1090,y:480,type:'Ghosting'},{x:1860,y:460,type:'Ghosting'},{x:1940,y:460,type:'Ghosting'},{x:960,y:620,type:'SetAir1'},{x:2150,y:490,type:'SlowMo'}],enemies:[{x:550,y:550-32},{x:1200,y:570-32},{x:1700,y:490-32},{x:2550,y:580-32}],finishX:2900,finishY:FLOOR_SPAWN_Y-20},
-  {arenaW:2400,spawnX:LEFT_SPAWN_X,spawnY:FLOOR_SPAWN_Y,platforms:[...makeBase(2400),{x:150,y:600,w:100,h:16},{x:350,y:550,w:100,h:16},{x:550,y:500,w:100,h:16,ghostable:true},{x:750,y:450,w:100,h:16},{x:950,y:400,w:100,h:16},{x:1150,y:580,w:120,h:16},{x:1400,y:540,w:110,h:16},{x:1650,y:500,w:100,h:16,ghostable:true},{x:1900,y:560,w:120,h:16},{x:2100,y:520,w:130,h:16}],floorHoles:[{x:300,w:80},{x:700,w:70},{x:1300,w:90},{x:1800,w:80}],spikeZones:[{x:500,y:662,w:80,h:18},{x:1550,y:662,w:80,h:18}],orbs:[{x:540,y:620,type:'SetAir1'},{x:1590,y:620,type:'SetAir1'},{x:400,y:420,type:'AddAir1'},{x:600,y:340,type:'AddAir1'},{x:800,y:370,type:'AddAir1'},{x:1100,y:370,type:'SlowMo'}],enemies:[{x:1200,y:580-32},{x:1450,y:540-32},{x:1950,y:560-32},{x:2150,y:520-32}],finishX:2300,finishY:FLOOR_SPAWN_Y-20},
-  {arenaW:3600,spawnX:LEFT_SPAWN_X,spawnY:FLOOR_SPAWN_Y,platforms:[...makeBase(3600),{x:200,y:590,w:120,h:16},{x:450,y:550,w:110,h:16,ghostable:true},{x:700,y:510,w:130,h:16},{x:950,y:570,w:120,h:16},{x:1200,y:530,w:110,h:16,ghostable:true},{x:1400,y:0,w:16,h:GROUND_Y,ghostable:true},{x:1500,y:580,w:130,h:16},{x:1750,y:540,w:120,h:16},{x:2000,y:500,w:140,h:16},{x:2250,y:560,w:120,h:16,ghostable:true},{x:2500,y:520,w:130,h:16},{x:2700,y:0,w:16,h:GROUND_Y,ghostable:true},{x:2800,y:570,w:120,h:16},{x:3050,y:530,w:140,h:16},{x:3300,y:580,w:120,h:16}],floorHoles:[{x:500,w:90},{x:1100,w:80},{x:1900,w:100},{x:2900,w:80}],spikeZones:[{x:800,y:662,w:100,h:18},{x:2100,y:662,w:100,h:18},{x:3100,y:662,w:80,h:18}],orbs:[{x:850,y:620,type:'SetAir1'},{x:2150,y:620,type:'SetAir1'},{x:3140,y:620,type:'SetAir1'},{x:1360,y:500,type:'Ghosting'},{x:1440,y:500,type:'Ghosting'},{x:2660,y:490,type:'Ghosting'},{x:2740,y:490,type:'Ghosting'},{x:600,y:380,type:'AddAir1'},{x:750,y:310,type:'AddAir1'},{x:1800,y:510,type:'SlowMo'},{x:3000,y:500,type:'NoGhosting'}],enemies:[{x:1000,y:570-32},{x:1550,y:580-32},{x:2050,y:500-32},{x:2550,y:520-32},{x:3100,y:FLOOR_SPAWN_Y}],finishX:3500,finishY:FLOOR_SPAWN_Y-20},
-];
+
+  // ────────────────────────────────────────
+  //  LEVEL 1 — Tutorial
+  // ────────────────────────────────────────
+  {
+    arenaW: 2000,
+    spawnX: LEFT_SPAWN_X,
+    spawnY: FLOOR_SPAWN_Y,
+    platforms: [
+      ...makeBase(2000),
+      { x: 650,  y: 520, w: 140, h: 16 },
+      { x: 1775, y: 0,   w: 16,  h: GROUND_Y, ghostable: true },
+    ],
+    floorHoles: [
+      { x: 200, w: 150 },
+      { x: 550, w: 450 },
+    ],
+    spikeZones: [
+      { x: 1200, y: 662, w: 325, h: 18 },
+    ],
+    orbs: [
+      { x: 1700, y: 655, type: 'Ghosting' },
+    ],
+    enemies: [],
+    finishX: 1900,
+    finishY: FLOOR_SPAWN_Y - 20,
+  },
+
+  // ────────────────────────────────────────
+  //  LEVEL 2 — Ghostable walls
+  // ────────────────────────────────────────
+  {
+    arenaW: 2200,
+    spawnX: LEFT_SPAWN_X,
+    spawnY: FLOOR_SPAWN_Y,
+    platforms: [
+      ...makeBase(2200),
+      { x: 200,  y: 640, w: 200, h: 40 },
+      { x: 1100, y: 425, w: 75,  h: 255 },
+      { x: 1175, y: 510, w: 75,  h: 170 },
+      { x: 1250, y: 595, w: 75,  h: 85 },
+      { x: 2050, y: 180, w: 150, h: 500 },
+    ],
+    floorHoles: [
+      { x: 400, w: 475 },
+    ],
+    spikeZones: [
+      { x: 1450, y: 662, w: 400, h: 18 },
+    ],
+    orbs: [
+      { x: 1075, y: 525, type: 'SetAir1' },
+      { x: 2025, y: 500, type: 'SetAir1' },
+      { x: 2025, y: 375, type: 'SetAir1' },
+      { x: 2025, y: 250, type: 'SetAir1' },
+    ],
+    enemies: [],
+    finishX: 2125,
+    finishY: 155,
+  },
+
+  // ────────────────────────────────────────
+  //  LEVEL 3 — Introduce spikes
+  // ────────────────────────────────────────
+  {
+    arenaW: 2150,
+    spawnX: LEFT_SPAWN_X,
+    spawnY: FLOOR_SPAWN_Y,
+    platforms: [
+      ...makeBase(2150),
+      { x: 917,  y: 400, w: 16,  h: 320 },
+      { x: 917,  y: 250, w: 16,  h: 150, ghostable: true },
+      { x: 917,  y: 0,   w: 16,  h: 250 },
+      { x: 300,  y: 520, w: 140, h: 16 },
+      { x: 1300, y: 520, w: 150, h: 16 },
+      { x: 1500, y: 400, w: 350, h: 16 },
+      { x: 2000, y: 300, w: 150, h: 420 },
+    ],
+    floorHoles: [
+      { x: 200,  w: 450 },
+      { x: 850,  w: 150 },
+      { x: 1200, w: 1000 },
+    ],
+    spikeZones: [
+      { x: 300,  y: 502, w: 140, h: 18 },
+      { x: 1300, y: 502, w: 150, h: 18 },
+      { x: 1500, y: 382, w: 350, h: 18 },
+    ],
+    orbs: [
+      { x: 897, y: 550, type: 'Ghosting' },
+    ],
+    enemies: [],
+    finishX: 2075,
+    finishY: 275,
+  },
+
+  // ────────────────────────────────────────
+  //  LEVEL 4 — Orb variety
+  // ────────────────────────────────────────
+  {
+    arenaW: 2400,
+    spawnX: LEFT_SPAWN_X,
+    spawnY: FLOOR_SPAWN_Y,
+    platforms: [
+      ...makeBase(2400),
+      { x: 200,  y: 580, w: 140, h: 16 },
+      { x: 500,  y: 550, w: 130, h: 16 },
+      { x: 800,  y: 520, w: 120, h: 16 },
+      { x: 1100, y: 580, w: 140, h: 16 },
+      { x: 1400, y: 540, w: 130, h: 16 },
+      { x: 1700, y: 570, w: 120, h: 16 },
+      { x: 2000, y: 550, w: 140, h: 16 },
+    ],
+    floorHoles: [],
+    spikeZones: [],
+    orbs: [
+      { x: 650,  y: 490, type: 'SetAir1NB' },
+      { x: 1300, y: 550, type: 'SetAir1' },
+    ],
+    enemies: [
+      { x: 550,  y: 550 - 32 },
+      { x: 1150, y: 580 - 32 },
+      { x: 1750, y: 570 - 32 },
+    ],
+    finishX: 2300,
+    finishY: FLOOR_SPAWN_Y - 20,
+  },
+
+  // ────────────────────────────────────────
+  //  LEVEL 5 — Vertical climb
+  // ────────────────────────────────────────
+  {
+    arenaW: 1750,
+    spawnX: LEFT_SPAWN_X,
+    spawnY: FLOOR_SPAWN_Y,
+    platforms: [
+      ...makeBase(1750),
+      { x: 1600, y: 180, w: 150, h: 500 },
+    ],
+    floorHoles: [
+      { x: 200, w: 925 },
+    ],
+    spikeZones: [],
+    orbs: [
+      { x: 500,  y: 620, type: 'SetAir1' },
+      { x: 650,  y: 620, type: 'SetAir1' },
+      { x: 800,  y: 620, type: 'SetAir1' },
+      { x: 950,  y: 620, type: 'SetAir1' },
+      { x: 1500, y: 500, type: 'SetAir1' },
+      { x: 1450, y: 375, type: 'SetAir1' },
+      { x: 1550, y: 275, type: 'SetAir1' },
+    ],
+    enemies: [],
+    finishX: 1675,
+    finishY: 155,
+  },
+
+  // ────────────────────────────────────────
+  //  LEVEL 6 — Ghost maze
+  // ────────────────────────────────────────
+  {
+    arenaW: 1080,
+    spawnX: LEFT_SPAWN_X,
+    spawnY: FLOOR_SPAWN_Y,
+    platforms: [
+      ...makeBase(1080),
+      { x: 0,   y: 350, w: 300, h: 16 },
+      { x: 1000, y: 500, w: 80,  h: 16 },
+      { x: 280, y: 100, w: 800, h: 16 },
+      { x: 0,   y: 225, w: 75,  h: 16 },
+      { x: 280, y: 0,   w: 20,  h: 350, ghostable: true },
+    ],
+    floorHoles: [
+      { x: 300, w: 780 },
+    ],
+    spikeZones: [],
+    orbs: [
+      { x: 600, y: 625, type: 'SetAir1' },
+      { x: 800, y: 550, type: 'SetAir1' },
+      { x: 875, y: 375, type: 'SetAir1' },
+      { x: 700, y: 330, type: 'SetAir1' },
+      { x: 450, y: 330, type: 'Ghosting' },
+    ],
+    enemies: [],
+    finishX: 800,
+    finishY: 75,
+  },
+
+  // ────────────────────────────────────────
+  //  LEVEL 7 — Ghost walls revisited
+  // ────────────────────────────────────────
+  {
+    arenaW: 2150,
+    spawnX: LEFT_SPAWN_X,
+    spawnY: FLOOR_SPAWN_Y,
+    platforms: [
+      ...makeBase(2150),
+      { x: 267,  y: 400, w: 16,  h: 320 },
+      { x: 267,  y: 250, w: 16,  h: 150, ghostable: true },
+      { x: 267,  y: 0,   w: 16,  h: 250 },
+      { x: 650,  y: 520, w: 140, h: 16 },
+      { x: 1300, y: 520, w: 150, h: 16 },
+      { x: 1500, y: 400, w: 350, h: 16 },
+      { x: 2000, y: 300, w: 150, h: 420 },
+    ],
+    floorHoles: [
+      { x: 200,  w: 150 },
+      { x: 550,  w: 450 },
+      { x: 1200, w: 1000 },
+    ],
+    spikeZones: [
+      { x: 650,  y: 502, w: 140, h: 18 },
+      { x: 1300, y: 502, w: 150, h: 18 },
+      { x: 1500, y: 382, w: 350, h: 18 },
+    ],
+    orbs: [
+      { x: 247, y: 550, type: 'Ghosting' },
+    ],
+    enemies: [],
+    finishX: 2075,
+    finishY: 275,
+  },
+
+  // ────────────────────────────────────────
+  //  LEVEL 8 — Mixed mechanics
+  // ────────────────────────────────────────
+  {
+    arenaW: 2800,
+    spawnX: LEFT_SPAWN_X,
+    spawnY: FLOOR_SPAWN_Y,
+    platforms: [
+      ...makeBase(2800),
+      { x: 200,  y: 590, w: 130, h: 16 },
+      { x: 450,  y: 550, w: 120, h: 16, ghostable: true },
+      { x: 700,  y: 510, w: 110, h: 16 },
+      { x: 950,  y: 570, w: 130, h: 16 },
+      { x: 1200, y: 530, w: 120, h: 16, ghostable: true },
+      { x: 1450, y: 490, w: 140, h: 16 },
+      { x: 1700, y: 550, w: 120, h: 16 },
+      { x: 1950, y: 510, w: 130, h: 16, ghostable: true },
+      { x: 2200, y: 570, w: 120, h: 16 },
+      { x: 2500, y: 530, w: 140, h: 16 },
+    ],
+    floorHoles: [
+      { x: 850, w: 80 },
+    ],
+    spikeZones: [
+      { x: 1600, y: 662, w: 120, h: 18 },
+    ],
+    orbs: [
+      { x: 600,  y: 480, type: 'AddAir1' },
+      { x: 750,  y: 400, type: 'AddAir1' },
+      { x: 1660, y: 620, type: 'SetAir1' },
+      { x: 2000, y: 480, type: 'Ghosting' },
+    ],
+    enemies: [
+      { x: 1000, y: 570 - 32 },
+      { x: 2250, y: 570 - 32 },
+    ],
+    finishX: 2700,
+    finishY: FLOOR_SPAWN_Y - 20,
+  },
+
+  // ────────────────────────────────────────
+  //  LEVEL 9 — Vertical challenge
+  // ────────────────────────────────────────
+  {
+    arenaW: 1600,
+    spawnX: LEFT_SPAWN_X,
+    spawnY: FLOOR_SPAWN_Y,
+    platforms: [
+      ...makeBase(1600),
+      { x: 100,  y: 600, w: 120, h: 16 },
+      { x: 300,  y: 520, w: 100, h: 16 },
+      { x: 150,  y: 440, w: 110, h: 16 },
+      { x: 350,  y: 360, w: 100, h: 16 },
+      { x: 550,  y: 600, w: 130, h: 16 },
+      { x: 750,  y: 530, w: 120, h: 16 },
+      { x: 600,  y: 450, w: 100, h: 16 },
+      { x: 800,  y: 380, w: 110, h: 16 },
+      { x: 1000, y: 580, w: 130, h: 16 },
+      { x: 1200, y: 520, w: 120, h: 16 },
+      { x: 1050, y: 440, w: 100, h: 16 },
+    ],
+    floorHoles: [],
+    spikeZones: [],
+    orbs: [
+      { x: 250, y: 490, type: 'AddAir1' },
+      { x: 250, y: 410, type: 'AddAir1' },
+      { x: 700, y: 500, type: 'SetAir1' },
+      { x: 700, y: 420, type: 'AddAir1' },
+    ],
+    enemies: [],
+    finishX: 1300,
+    finishY: 440 - 32 - 20,
+  },
+
+  // ────────────────────────────────────────
+  //  LEVEL 10 — Gauntlet
+  // ────────────────────────────────────────
+  {
+    arenaW: 3200,
+    spawnX: LEFT_SPAWN_X,
+    spawnY: FLOOR_SPAWN_Y,
+    platforms: [
+      ...makeBase(3200),
+      { x: 200,  y: 590, w: 130, h: 16 },
+      { x: 450,  y: 560, w: 120, h: 16 },
+      { x: 700,  y: 530, w: 130, h: 16 },
+      { x: 950,  y: 590, w: 140, h: 16 },
+      { x: 1200, y: 550, w: 120, h: 16 },
+      { x: 1450, y: 510, w: 130, h: 16 },
+      { x: 1700, y: 570, w: 120, h: 16, ghostable: true },
+      { x: 1900, y: 0,   w: 16,  h: GROUND_Y, ghostable: true },
+      { x: 2000, y: 580, w: 140, h: 16 },
+      { x: 2250, y: 540, w: 130, h: 16 },
+      { x: 2500, y: 570, w: 120, h: 16 },
+      { x: 2750, y: 530, w: 140, h: 16 },
+    ],
+    floorHoles: [
+      { x: 1550, w: 90 },
+    ],
+    spikeZones: [
+      { x: 800, y: 662, w: 120, h: 18 },
+    ],
+    orbs: [
+      { x: 860,  y: 620, type: 'SetAir1' },
+      { x: 1860, y: 540, type: 'Ghosting' },
+      { x: 1940, y: 540, type: 'Ghosting' },
+      { x: 2400, y: 510, type: 'SlowMo' },
+    ],
+    enemies: [
+      { x: 1000, y: 590 - 32 },
+      { x: 2300, y: 540 - 32 },
+    ],
+    finishX: 3100,
+    finishY: FLOOR_SPAWN_Y - 20,
+  },
+
+  // ────────────────────────────────────────
+  //  LEVEL 11
+  // ────────────────────────────────────────
+  {
+    arenaW: 2400,
+    spawnX: LEFT_SPAWN_X,
+    spawnY: FLOOR_SPAWN_Y,
+    platforms: [
+      ...makeBase(2400),
+      { x: 180,  y: 600, w: 130, h: 16, ghostable: true },
+      { x: 420,  y: 560, w: 120, h: 16 },
+      { x: 660,  y: 520, w: 110, h: 16, ghostable: true },
+      { x: 900,  y: 580, w: 130, h: 16 },
+      { x: 1140, y: 540, w: 120, h: 16 },
+      { x: 1380, y: 500, w: 130, h: 16, ghostable: true },
+      { x: 1620, y: 560, w: 120, h: 16 },
+      { x: 1860, y: 520, w: 140, h: 16 },
+      { x: 2100, y: 580, w: 120, h: 16, ghostable: true },
+    ],
+    floorHoles: [
+      { x: 500, w: 70 },
+      { x: 1500, w: 90 },
+    ],
+    spikeZones: [
+      { x: 800, y: 662, w: 80, h: 18 },
+    ],
+    orbs: [
+      { x: 840,  y: 620, type: 'SetAir1' },
+      { x: 1300, y: 470, type: 'AddAir1' },
+    ],
+    enemies: [
+      { x: 950, y: 580 - 32 },
+    ],
+    finishX: 2300,
+    finishY: FLOOR_SPAWN_Y - 20,
+  },
+
+  // ────────────────────────────────────────
+  //  LEVEL 12
+  // ────────────────────────────────────────
+  {
+    arenaW: 2800,
+    spawnX: LEFT_SPAWN_X,
+    spawnY: FLOOR_SPAWN_Y,
+    platforms: [
+      ...makeBase(2800),
+      { x: 200,  y: 590, w: 120, h: 16 },
+      { x: 450,  y: 550, w: 130, h: 16 },
+      { x: 700,  y: 510, w: 110, h: 16 },
+      { x: 950,  y: 570, w: 120, h: 16, ghostable: true },
+      { x: 1100, y: 0,   w: 16,  h: GROUND_Y, ghostable: true },
+      { x: 1200, y: 580, w: 140, h: 16 },
+      { x: 1450, y: 540, w: 120, h: 16 },
+      { x: 1700, y: 500, w: 130, h: 16 },
+      { x: 1950, y: 560, w: 120, h: 16, ghostable: true },
+      { x: 2200, y: 520, w: 140, h: 16 },
+      { x: 2500, y: 580, w: 120, h: 16 },
+    ],
+    floorHoles: [
+      { x: 1800, w: 100 },
+    ],
+    spikeZones: [
+      { x: 600, y: 662, w: 80, h: 18 },
+    ],
+    orbs: [
+      { x: 1060, y: 530, type: 'Ghosting' },
+      { x: 1140, y: 530, type: 'Ghosting' },
+      { x: 640,  y: 620, type: 'SetAir1' },
+      { x: 2000, y: 530, type: 'NoGhosting' },
+    ],
+    enemies: [
+      { x: 1500, y: 540 - 32 },
+      { x: 2250, y: 520 - 32 },
+    ],
+    finishX: 2700,
+    finishY: FLOOR_SPAWN_Y - 20,
+  },
+
+  // ────────────────────────────────────────
+  //  LEVEL 13
+  // ────────────────────────────────────────
+  {
+    arenaW: 2400,
+    spawnX: LEFT_SPAWN_X,
+    spawnY: FLOOR_SPAWN_Y,
+    platforms: [
+      ...makeBase(2400),
+      { x: 150,  y: 600, w: 120, h: 16 },
+      { x: 400,  y: 560, w: 130, h: 16, ghostable: true },
+      { x: 650,  y: 520, w: 110, h: 16 },
+      { x: 900,  y: 580, w: 120, h: 16 },
+      { x: 1150, y: 540, w: 130, h: 16, ghostable: true },
+      { x: 1400, y: 500, w: 120, h: 16 },
+      { x: 1650, y: 560, w: 140, h: 16 },
+      { x: 1900, y: 520, w: 120, h: 16 },
+      { x: 2150, y: 580, w: 130, h: 16 },
+    ],
+    floorHoles: [
+      { x: 350,  w: 80 },
+      { x: 1050, w: 70 },
+      { x: 1850, w: 90 },
+    ],
+    spikeZones: [],
+    orbs: [
+      { x: 800,  y: 490, type: 'SlowMo' },
+      { x: 1300, y: 470, type: 'AddAir1' },
+    ],
+    enemies: [
+      { x: 700,  y: 520 - 32 },
+      { x: 1700, y: 560 - 32 },
+    ],
+    finishX: 2300,
+    finishY: FLOOR_SPAWN_Y - 20,
+  },
+
+  // ────────────────────────────────────────
+  //  LEVEL 14
+  // ────────────────────────────────────────
+  {
+    arenaW: 3000,
+    spawnX: LEFT_SPAWN_X,
+    spawnY: FLOOR_SPAWN_Y,
+    platforms: [
+      ...makeBase(3000),
+      { x: 200,  y: 590, w: 130, h: 16 },
+      { x: 500,  y: 550, w: 120, h: 16 },
+      { x: 800,  y: 510, w: 140, h: 16, ghostable: true },
+      { x: 1050, y: 0,   w: 16,  h: GROUND_Y, ghostable: true },
+      { x: 1150, y: 570, w: 130, h: 16 },
+      { x: 1400, y: 530, w: 120, h: 16 },
+      { x: 1650, y: 490, w: 110, h: 16, ghostable: true },
+      { x: 1900, y: 550, w: 130, h: 16 },
+      { x: 2150, y: 510, w: 120, h: 16 },
+      { x: 2400, y: 570, w: 140, h: 16 },
+      { x: 2700, y: 530, w: 120, h: 16 },
+    ],
+    floorHoles: [
+      { x: 700,  w: 80 },
+      { x: 2000, w: 100 },
+    ],
+    spikeZones: [
+      { x: 1300, y: 662, w: 100, h: 18 },
+    ],
+    orbs: [
+      { x: 1010, y: 480, type: 'Ghosting' },
+      { x: 1090, y: 480, type: 'Ghosting' },
+      { x: 1350, y: 620, type: 'SetAir1' },
+      { x: 2300, y: 480, type: 'AddAir1' },
+    ],
+    enemies: [
+      { x: 1200, y: 570 - 32 },
+      { x: 2450, y: 570 - 32 },
+    ],
+    finishX: 2900,
+    finishY: FLOOR_SPAWN_Y - 20,
+  },
+
+  // ────────────────────────────────────────
+  //  LEVEL 15
+  // ────────────────────────────────────────
+  {
+    arenaW: 2400,
+    spawnX: LEFT_SPAWN_X,
+    spawnY: FLOOR_SPAWN_Y,
+    platforms: [
+      ...makeBase(2400),
+      { x: 200,  y: 600, w: 100, h: 16 },
+      { x: 400,  y: 550, w: 100, h: 16 },
+      { x: 600,  y: 500, w: 100, h: 16 },
+      { x: 800,  y: 450, w: 100, h: 16 },
+      { x: 1000, y: 590, w: 120, h: 16 },
+      { x: 1250, y: 550, w: 100, h: 16, ghostable: true },
+      { x: 1500, y: 510, w: 120, h: 16 },
+      { x: 1750, y: 560, w: 100, h: 16 },
+      { x: 2000, y: 520, w: 130, h: 16 },
+    ],
+    floorHoles: [
+      { x: 900, w: 80 },
+    ],
+    spikeZones: [
+      { x: 1400, y: 662, w: 80, h: 18 },
+    ],
+    orbs: [
+      { x: 350,  y: 470, type: 'AddAir1' },
+      { x: 500,  y: 420, type: 'AddAir1' },
+      { x: 1450, y: 620, type: 'SetAir1' },
+      { x: 1800, y: 530, type: 'SlowMo' },
+    ],
+    enemies: [
+      { x: 1050, y: 590 - 32 },
+      { x: 2050, y: 520 - 32 },
+    ],
+    finishX: 2300,
+    finishY: FLOOR_SPAWN_Y - 20,
+  },
+
+  // ────────────────────────────────────────
+  //  LEVEL 16
+  // ────────────────────────────────────────
+  {
+    arenaW: 3200,
+    spawnX: LEFT_SPAWN_X,
+    spawnY: FLOOR_SPAWN_Y,
+    platforms: [
+      ...makeBase(3200),
+      { x: 200,  y: 590, w: 130, h: 16 },
+      { x: 500,  y: 550, w: 120, h: 16 },
+      { x: 800,  y: 510, w: 140, h: 16 },
+      { x: 1100, y: 570, w: 120, h: 16, ghostable: true },
+      { x: 1300, y: 0,   w: 16,  h: GROUND_Y, ghostable: true },
+      { x: 1400, y: 580, w: 130, h: 16 },
+      { x: 1700, y: 540, w: 120, h: 16 },
+      { x: 2000, y: 500, w: 140, h: 16 },
+      { x: 2300, y: 560, w: 130, h: 16 },
+      { x: 2600, y: 520, w: 120, h: 16 },
+      { x: 2900, y: 580, w: 140, h: 16 },
+    ],
+    floorHoles: [
+      { x: 650,  w: 100 },
+      { x: 1900, w: 80 },
+      { x: 2500, w: 70 },
+    ],
+    spikeZones: [
+      { x: 1000, y: 662, w: 80, h: 18 },
+      { x: 2200, y: 662, w: 80, h: 18 },
+    ],
+    orbs: [
+      { x: 1260, y: 540, type: 'Ghosting' },
+      { x: 1340, y: 540, type: 'Ghosting' },
+      { x: 1040, y: 620, type: 'SetAir1' },
+      { x: 2240, y: 620, type: 'SetAir1' },
+      { x: 1800, y: 510, type: 'AddAir1' },
+    ],
+    enemies: [
+      { x: 550,  y: FLOOR_SPAWN_Y },
+      { x: 1450, y: 580 - 32 },
+      { x: 2050, y: 500 - 32 },
+      { x: 2650, y: 520 - 32 },
+    ],
+    finishX: 3100,
+    finishY: FLOOR_SPAWN_Y - 20,
+  },
+
+  // ────────────────────────────────────────
+  //  LEVEL 17
+  // ────────────────────────────────────────
+  {
+    arenaW: 2800,
+    spawnX: LEFT_SPAWN_X,
+    spawnY: FLOOR_SPAWN_Y,
+    platforms: [
+      ...makeBase(2800),
+      { x: 200,  y: 600, w: 120, h: 16 },
+      { x: 450,  y: 560, w: 100, h: 16, ghostable: true },
+      { x: 700,  y: 520, w: 130, h: 16 },
+      { x: 950,  y: 480, w: 110, h: 16 },
+      { x: 1200, y: 570, w: 120, h: 16 },
+      { x: 1450, y: 530, w: 130, h: 16, ghostable: true },
+      { x: 1700, y: 490, w: 120, h: 16 },
+      { x: 1950, y: 560, w: 130, h: 16 },
+      { x: 2200, y: 520, w: 120, h: 16 },
+      { x: 2500, y: 580, w: 140, h: 16 },
+    ],
+    floorHoles: [
+      { x: 400,  w: 90 },
+      { x: 1600, w: 80 },
+    ],
+    spikeZones: [
+      { x: 850,  y: 662, w: 80,  h: 18 },
+      { x: 2050, y: 662, w: 100, h: 18 },
+    ],
+    orbs: [
+      { x: 890,  y: 620, type: 'SetAir1' },
+      { x: 2100, y: 620, type: 'SetAir1' },
+      { x: 600,  y: 490, type: 'SlowMo' },
+      { x: 1800, y: 460, type: 'NoGhosting' },
+    ],
+    enemies: [
+      { x: 750,  y: 520 - 32 },
+      { x: 1250, y: 570 - 32 },
+      { x: 2000, y: 560 - 32 },
+    ],
+    finishX: 2700,
+    finishY: FLOOR_SPAWN_Y - 20,
+  },
+
+  // ────────────────────────────────────────
+  //  LEVEL 18
+  // ────────────────────────────────────────
+  {
+    arenaW: 3000,
+    spawnX: LEFT_SPAWN_X,
+    spawnY: FLOOR_SPAWN_Y,
+    platforms: [
+      ...makeBase(3000),
+      { x: 200,  y: 590, w: 130, h: 16 },
+      { x: 500,  y: 550, w: 120, h: 16 },
+      { x: 800,  y: 510, w: 110, h: 16, ghostable: true },
+      { x: 1050, y: 0,   w: 16,  h: GROUND_Y, ghostable: true },
+      { x: 1150, y: 570, w: 130, h: 16 },
+      { x: 1400, y: 530, w: 120, h: 16, ghostable: true },
+      { x: 1650, y: 490, w: 140, h: 16 },
+      { x: 1900, y: 0,   w: 16,  h: GROUND_Y, ghostable: true },
+      { x: 2000, y: 560, w: 120, h: 16 },
+      { x: 2250, y: 520, w: 130, h: 16 },
+      { x: 2500, y: 580, w: 120, h: 16 },
+      { x: 2750, y: 540, w: 140, h: 16 },
+    ],
+    floorHoles: [
+      { x: 600,  w: 80 },
+      { x: 1750, w: 100 },
+      { x: 2400, w: 70 },
+    ],
+    spikeZones: [
+      { x: 900, y: 662, w: 120, h: 18 },
+    ],
+    orbs: [
+      { x: 1010, y: 480, type: 'Ghosting' },
+      { x: 1090, y: 480, type: 'Ghosting' },
+      { x: 1860, y: 460, type: 'Ghosting' },
+      { x: 1940, y: 460, type: 'Ghosting' },
+      { x: 960,  y: 620, type: 'SetAir1' },
+      { x: 2150, y: 490, type: 'SlowMo' },
+    ],
+    enemies: [
+      { x: 550,  y: 550 - 32 },
+      { x: 1200, y: 570 - 32 },
+      { x: 1700, y: 490 - 32 },
+      { x: 2550, y: 580 - 32 },
+    ],
+    finishX: 2900,
+    finishY: FLOOR_SPAWN_Y - 20,
+  },
+
+  // ────────────────────────────────────────
+  //  LEVEL 19
+  // ────────────────────────────────────────
+  {
+    arenaW: 2400,
+    spawnX: LEFT_SPAWN_X,
+    spawnY: FLOOR_SPAWN_Y,
+    platforms: [
+      ...makeBase(2400),
+      { x: 150,  y: 600, w: 100, h: 16 },
+      { x: 350,  y: 550, w: 100, h: 16 },
+      { x: 550,  y: 500, w: 100, h: 16, ghostable: true },
+      { x: 750,  y: 450, w: 100, h: 16 },
+      { x: 950,  y: 400, w: 100, h: 16 },
+      { x: 1150, y: 580, w: 120, h: 16 },
+      { x: 1400, y: 540, w: 110, h: 16 },
+      { x: 1650, y: 500, w: 100, h: 16, ghostable: true },
+      { x: 1900, y: 560, w: 120, h: 16 },
+      { x: 2100, y: 520, w: 130, h: 16 },
+    ],
+    floorHoles: [
+      { x: 300,  w: 80 },
+      { x: 700,  w: 70 },
+      { x: 1300, w: 90 },
+      { x: 1800, w: 80 },
+    ],
+    spikeZones: [
+      { x: 500,  y: 662, w: 80, h: 18 },
+      { x: 1550, y: 662, w: 80, h: 18 },
+    ],
+    orbs: [
+      { x: 540,  y: 620, type: 'SetAir1' },
+      { x: 1590, y: 620, type: 'SetAir1' },
+      { x: 400,  y: 420, type: 'AddAir1' },
+      { x: 600,  y: 340, type: 'AddAir1' },
+      { x: 800,  y: 370, type: 'AddAir1' },
+      { x: 1100, y: 370, type: 'SlowMo' },
+    ],
+    enemies: [
+      { x: 1200, y: 580 - 32 },
+      { x: 1450, y: 540 - 32 },
+      { x: 1950, y: 560 - 32 },
+      { x: 2150, y: 520 - 32 },
+    ],
+    finishX: 2300,
+    finishY: FLOOR_SPAWN_Y - 20,
+  },
+
+  // ────────────────────────────────────────
+  //  LEVEL 20 — SHOWCASE / REFERENCE LEVEL
+  //  Demonstrates every feature in the game.
+  //  Walk through left to right to see each one.
+  //  Use this as a template for how to place objects.
+  // ────────────────────────────────────────
+  {
+    arenaW: 6400,
+    spawnX: LEFT_SPAWN_X,
+    spawnY: FLOOR_SPAWN_Y,
+    hp: 8,                          // per-level HP override (default is 5)
+    // finishCriteria: 'default',   // could be 'killAll' or 'activateAllOrbs'
+
+    platforms: [
+      ...makeBase(6400),
+
+      // ── Section 1: Basic platforms + enemy (x: 100–800) ──
+      { x: 150,  y: 600, w: 120, h: 16 },            // normal platform
+      { x: 350,  y: 550, w: 100, h: 16 },
+      { x: 600,  y: 520, w: 140, h: 16 },
+
+      // ── Section 2: Orb variety (x: 800–1600) ──
+      { x: 850,  y: 580, w: 100, h: 16 },
+      { x: 1050, y: 550, w: 100, h: 16 },
+      { x: 1250, y: 520, w: 100, h: 16 },
+      { x: 1450, y: 580, w: 120, h: 16 },
+
+      // ── Section 3: Boost orbs + floor holes (x: 1600–2400) ──
+      { x: 1650, y: 580, w: 100, h: 16 },
+      { x: 2100, y: 400, w: 140, h: 16 },            // high landing platform
+      { x: 2300, y: 580, w: 120, h: 16 },
+
+      // ── Section 4: Ghostable walls + Ghost orbs (x: 2400–3200) ──
+      { x: 2500, y: 580, w: 120, h: 16 },
+      { x: 2750, y: 0,   w: 16,  h: GROUND_Y, ghostable: true }, // ghostable wall
+      { x: 2850, y: 550, w: 120, h: 16 },
+      { x: 3050, y: 500, w: 120, h: 16 },
+
+      // ── Section 5: Triangle blocks + grounded platform (x: 3200–4000) ──
+      { x: 3250, y: 580, w: 140, h: 16 },
+      { x: 3650, y: 580, w: 180, h: 16, grounded: true },  // grounded: can't jump/dash here!
+      { x: 3900, y: 540, w: 120, h: 16 },
+
+      // ── Section 6: Moving platforms (x: 4000–4800) ──
+      // (moving platforms defined separately below)
+      { x: 4050, y: 580, w: 100, h: 16 },
+      { x: 4650, y: 500, w: 140, h: 16 },
+
+      // ── Section 7: SlowMo + Teleport + Bullet orbs (x: 4800–5600) ──
+      { x: 4850, y: 580, w: 120, h: 16 },
+      { x: 5100, y: 540, w: 100, h: 16 },
+      { x: 5350, y: 500, w: 100, h: 16 },
+
+      // ── Section 8: Final area with checkpoints (x: 5600–6400) ──
+      { x: 5650, y: 580, w: 120, h: 16 },
+      { x: 5900, y: 540, w: 120, h: 16 },
+      { x: 6150, y: 500, w: 140, h: 16 },
+    ],
+
+    floorHoles: [
+      { x: 1800, w: 200 },   // gap in Section 3 (requires Boost to cross)
+      { x: 4200, w: 300 },   // gap in Section 6 (requires moving platform)
+    ],
+
+    spikeZones: [
+      { x: 500,  y: 662, w: 80, h: 18 },   // Section 1: spikes on ground
+      { x: 3450, y: 662, w: 80, h: 18 },   // Section 5: spikes before grounded plat
+    ],
+
+    // ── Moving platforms ──
+    //  Each moves back and forth between (x1,y1) → (x2,y2)
+    //  speed = pixels per frame of travel
+    movingPlatforms: [
+      { x1: 4200, y1: 580, x2: 4500, y2: 580, w: 80, h: 16, speed: 1 },   // horizontal mover
+      { x1: 4550, y1: 580, x2: 4550, y2: 420, w: 80, h: 16, speed: 0.8 },  // vertical mover
+    ],
+
+    // ── Triangle blocks ──
+    //  facing:'left'  = right-angle at bottom-right, slope goes ↗
+    //  facing:'right' = right-angle at bottom-left, slope goes ↖
+    triangleBlocks: [
+      { x: 3400, y: 600, w: 120, h: 80, facing: 'left' },   // slide to the left
+      { x: 3520, y: 620, w: 80,  h: 60, facing: 'right' },   // slide to the right
+    ],
+
+    // ── Orbs — every type demonstrated ──
+    orbs: [
+      // Section 2: Air charge orbs
+      { x: 900,  y: 550, type: 'SetAir1' },     // sets air to 1, bounces
+      { x: 950,  y: 550, type: 'SetAir2' },     // sets air to 2, bounces
+      { x: 1100, y: 520, type: 'AddAir1' },     // adds 1 air, bounces
+      { x: 1150, y: 520, type: 'AddAir2' },     // adds 2 air, bounces
+      { x: 1300, y: 490, type: 'SetAir1NB' },   // sets air to 1, NO bounce
+      { x: 1350, y: 490, type: 'AddAir1NB' },   // adds 1 air, NO bounce
+
+      // Section 3: Boost orbs (launch upward)
+      { x: 1700, y: 655, type: 'Boost1' },      // 200px boost
+      { x: 1950, y: 655, type: 'Boost2' },      // 350px boost
+      { x: 2150, y: 370, type: 'Boost3' },      // 500px boost (on high platform)
+
+      // Section 4: Ghost orbs
+      { x: 2700, y: 550, type: 'Ghosting' },    // enables ghost (pass through ghostable)
+      { x: 3100, y: 470, type: 'NoGhosting' },  // disables ghost
+
+      // Section 5: An orb near the grounded platform to show you can still use shot-triggered bounces
+      { x: 3750, y: 550, type: 'SetAir2' },
+
+      // Section 7: Utility orbs
+      { x: 4900, y: 550, type: 'SlowMo', slowDuration: 5000 },   // slow time (custom 5s duration)
+      { x: 5150, y: 510, type: 'Teleport' },                      // teleports player to orb center
+      { x: 5400, y: 470, type: 'Bullet1' },                       // adds 1 bullet
+      { x: 5450, y: 470, type: 'Bullet3' },                       // adds 3 bullets
+
+      // Section 8: Non-respawning orb example
+      { x: 5950, y: 510, type: 'SetAir3', respawns: false },      // does NOT respawn once used
+    ],
+
+    enemies: [
+      { x: 400,  y: FLOOR_SPAWN_Y },    // Section 1
+      { x: 5700, y: 580 - 32 },          // Section 8
+      { x: 5950, y: 540 - 32 },          // Section 8
+    ],
+
+    // ── Checkpoints — all must be cleared before finish is active ──
+    checkpoints: [
+      { x: 2400, y: 655 },    // after Section 3
+      { x: 4750, y: 655 },    // after Section 6
+      { x: 6050, y: 470 },    // in Section 8
+    ],
+
+    finishX: 6300,
+    finishY: FLOOR_SPAWN_Y - 20,
+  },
+
+]; // end LEVELS
+
+
+// ╔══════════════════════════════════════════════════════════════╗
+// ║  GROUND SPLITTING — handles floor holes                     ║
+// ╚══════════════════════════════════════════════════════════════╝
 
 function splitGroundAroundHoles(groundPlat, holes) {
   if (!holes || holes.length === 0) return [{ ...groundPlat }];
   const sorted = [...holes].sort((a, b) => a.x - b.x);
-  const segments = []; let curX = groundPlat.x;
-  for (const hole of sorted) { if (hole.x > curX) segments.push({ x: curX, y: groundPlat.y, w: hole.x - curX, h: groundPlat.h, isGround: true }); curX = hole.x + hole.w; }
+  const segments = [];
+  let curX = groundPlat.x;
+  for (const hole of sorted) {
+    if (hole.x > curX) {
+      segments.push({ x: curX, y: groundPlat.y, w: hole.x - curX, h: groundPlat.h, isGround: true });
+    }
+    curX = hole.x + hole.w;
+  }
   const endX = groundPlat.x + groundPlat.w;
-  if (curX < endX) segments.push({ x: curX, y: groundPlat.y, w: endX - curX, h: groundPlat.h, isGround: true });
+  if (curX < endX) {
+    segments.push({ x: curX, y: groundPlat.y, w: endX - curX, h: groundPlat.h, isGround: true });
+  }
   return segments;
 }
 
-// ============================================================
-//  ACTIVE LEVEL STATE
-// ============================================================
-let currentLevel = 0, arenaW = 2400, levelH = CONFIG.VIEW_H, levelGroundY = GROUND_Y, levelMaxHP = CONFIG.MAX_HP;
-let platforms = [], spikeList = [], orbObjects = [], floorHoleList = [], finishOrb = null;
-let enemyInitData = [], enemyList = [], projectileList = [];
-let checkpointObjects = [], movingPlatList = [], triangleBlockList = [];
-let orbsActivated = new Set();
-let gameState = 'start', transitionTimer = 0;
+
+// ╔══════════════════════════════════════════════════════════════╗
+// ║  ACTIVE LEVEL STATE                                         ║
+// ╚══════════════════════════════════════════════════════════════╝
+
+let currentLevel    = 0;
+let arenaW          = 2400;
+let levelH          = CONFIG.VIEW_H;
+let levelGroundY    = GROUND_Y;
+let levelMaxHP      = CONFIG.MAX_HP;
+let platforms       = [];
+let spikeList       = [];
+let orbObjects      = [];
+let floorHoleList   = [];
+let finishOrb       = null;
+let enemyInitData   = [];
+let enemyList       = [];
+let projectileList  = [];
+let checkpointObjects  = [];
+let movingPlatList     = [];
+let triangleBlockList  = [];
+let orbsActivated      = new Set();
+
+let gameState       = 'start';
+let transitionTimer = 0;
 const TRANSITION_TOTAL = 90;
-let timeScale = 1.0, slowRealTimeLeft = 0, slowRealTimeTotal = 0;
+let timeScale       = 1.0;
+let slowRealTimeLeft  = 0;
+let slowRealTimeTotal = 0;
+
+
+// ╔══════════════════════════════════════════════════════════════╗
+// ║  CANVAS + INPUT                                             ║
+// ╚══════════════════════════════════════════════════════════════╝
 
 const canvas = document.getElementById('gameCanvas');
-const ctx = canvas.getContext('2d');
-canvas.width = CONFIG.VIEW_W; canvas.height = CONFIG.VIEW_H;
+const ctx    = canvas.getContext('2d');
+canvas.width  = CONFIG.VIEW_W;
+canvas.height = CONFIG.VIEW_H;
+
 let mouseX = 0, mouseY = 0;
-canvas.addEventListener('mousemove', (e) => { const rect = canvas.getBoundingClientRect(); mouseX = (e.clientX - rect.left) * (CONFIG.VIEW_W / rect.width); mouseY = (e.clientY - rect.top) * (CONFIG.VIEW_H / rect.height); });
-function isOverRestartBtn() { return mouseX >= CONFIG.RESTART_BTN_X && mouseX <= CONFIG.RESTART_BTN_X + CONFIG.RESTART_BTN_W && mouseY >= CONFIG.RESTART_BTN_Y && mouseY <= CONFIG.RESTART_BTN_Y + CONFIG.RESTART_BTN_H; }
-canvas.addEventListener('click', (e) => { if ((gameState === 'playing' || gameState === 'transition') && isOverRestartBtn()) { loadLevel(currentLevel); return; } if (gameState === 'start') { gameState = 'playing'; canvas.style.cursor = 'default'; } canvas.focus(); });
+canvas.addEventListener('mousemove', (e) => {
+  const rect = canvas.getBoundingClientRect();
+  mouseX = (e.clientX - rect.left) * (CONFIG.VIEW_W / rect.width);
+  mouseY = (e.clientY - rect.top)  * (CONFIG.VIEW_H / rect.height);
+});
+
+function isOverRestartBtn() {
+  return mouseX >= CONFIG.RESTART_BTN_X && mouseX <= CONFIG.RESTART_BTN_X + CONFIG.RESTART_BTN_W &&
+         mouseY >= CONFIG.RESTART_BTN_Y && mouseY <= CONFIG.RESTART_BTN_Y + CONFIG.RESTART_BTN_H;
+}
+
+canvas.addEventListener('click', () => {
+  if ((gameState === 'playing' || gameState === 'transition') && isOverRestartBtn()) {
+    loadLevel(currentLevel); return;
+  }
+  if (gameState === 'start') { gameState = 'playing'; canvas.style.cursor = 'default'; }
+  canvas.focus();
+});
 canvas.setAttribute('tabindex', '0');
 
 const camera = { x: 0, y: 0 };
+
 function updateCamera() {
+  // Horizontal
   const targetX = player.x + player.w / 2 - CONFIG.VIEW_W / 2;
   camera.x += (targetX - camera.x) * 0.08;
   camera.x = Math.max(0, Math.min(camera.x, arenaW - CONFIG.VIEW_W));
+  // Vertical (only for levels taller than viewport)
   const maxCamY = levelH - CONFIG.VIEW_H;
-  if (maxCamY > 0) { const targetY = player.y + player.h / 2 - CONFIG.VIEW_H / 2; camera.y += (targetY - camera.y) * 0.08; camera.y = Math.max(0, Math.min(camera.y, maxCamY)); }
-  else camera.y = 0;
+  if (maxCamY > 0) {
+    const targetY = player.y + player.h / 2 - CONFIG.VIEW_H / 2;
+    camera.y += (targetY - camera.y) * 0.08;
+    camera.y = Math.max(0, Math.min(camera.y, maxCamY));
+  } else {
+    camera.y = 0;
+  }
 }
 
 const keys = {};
-let jumpPressedThisFrame = false, jumpReleasedThisFrame = false, dashPressedThisFrame = false, hitPressedThisFrame = false, shootPressedThisFrame = false;
-window.addEventListener('keydown', (e) => { if (['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Space',' '].includes(e.key) || e.code === 'Space') e.preventDefault(); if (!keys[e.code]) { if (e.code === 'Space') jumpPressedThisFrame = true; if (e.code === 'KeyW') dashPressedThisFrame = true; if (e.code === 'KeyR') hitPressedThisFrame = true; if (e.code === 'KeyE') shootPressedThisFrame = true; } keys[e.code] = true; });
-window.addEventListener('keyup', (e) => { keys[e.code] = false; if (e.code === 'Space') jumpReleasedThisFrame = true; });
+let jumpPressedThisFrame = false, jumpReleasedThisFrame = false;
+let dashPressedThisFrame = false, hitPressedThisFrame = false;
+let shootPressedThisFrame = false;
+
+window.addEventListener('keydown', (e) => {
+  if (['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Space',' '].includes(e.key) || e.code === 'Space') e.preventDefault();
+  if (!keys[e.code]) {
+    if (e.code === 'Space') jumpPressedThisFrame  = true;
+    if (e.code === 'KeyW')  dashPressedThisFrame   = true;
+    if (e.code === 'KeyR')  hitPressedThisFrame    = true;
+    if (e.code === 'KeyE')  shootPressedThisFrame  = true;
+  }
+  keys[e.code] = true;
+});
+window.addEventListener('keyup', (e) => {
+  keys[e.code] = false;
+  if (e.code === 'Space') jumpReleasedThisFrame = true;
+});
+
+
+// ╔══════════════════════════════════════════════════════════════╗
+// ║  PLAYER STATE                                               ║
+// ╚══════════════════════════════════════════════════════════════╝
 
 const player = {
-  x:0,y:0,w:CONFIG.PLAYER_W,h:CONFIG.PLAYER_H,vx:0,vy:0,grounded:false,
-  coyoteTimer:0,jumpBufferTimer:0,jumping:false,facingRight:true,airCharges:1,
-  dashTimer:0,dashCooldownTimer:0,dashDirX:0,
-  hitActiveTimer:0,hitCooldownTimer:0,hitDir:'right',hitKnockbackDone:false,hitSpikeBounceDone:false,hitEnemyIds:null,
-  ghostTimer:0,safeX:0,safeY:0,hp:CONFIG.MAX_HP,invTimer:0,
-  lastGroundedX:0,lastGroundedY:0,squashX:1,squashY:1,landTimer:0,dashTrails:[],
-  shots:CONFIG.MAX_SHOTS,shotCooldownTimer:0,shotHoverTimer:0,shotKills:0,bufferedJump:false,bufferedDash:false,
-  onTriangle:false,triangleFacing:null,
+  x: 0, y: 0, w: CONFIG.PLAYER_W, h: CONFIG.PLAYER_H,
+  vx: 0, vy: 0, grounded: false,
+  coyoteTimer: 0, jumpBufferTimer: 0,
+  jumping: false, facingRight: true,
+  airCharges: 1,
+  dashTimer: 0, dashCooldownTimer: 0, dashDirX: 0,
+  hitActiveTimer: 0, hitCooldownTimer: 0,
+  hitDir: 'right', hitKnockbackDone: false, hitSpikeBounceDone: false, hitEnemyIds: null,
+  ghostTimer: 0, safeX: 0, safeY: 0,
+  hp: CONFIG.MAX_HP, invTimer: 0,
+  lastGroundedX: 0, lastGroundedY: 0,
+  squashX: 1, squashY: 1, landTimer: 0, dashTrails: [],
+  shots: CONFIG.MAX_SHOTS, shotCooldownTimer: 0, shotHoverTimer: 0, shotKills: 0,
+  bufferedJump: false, bufferedDash: false,
+  onTriangle: false, triangleFacing: null,
+  onGroundedPlat: false,
 };
 let spawnX = 0, spawnY = 0;
 
-function resetEnemies() { enemyList = enemyInitData.map(e => ({ x:e.x,y:e.y,w:CONFIG.PLAYER_W,h:CONFIG.PLAYER_H,dir:1,hp:CONFIG.ENEMY_MAX_HP,active:true })); }
-function hasGroundAt(checkX, feetY) { for (const plat of platforms) { if (!isSolid(plat)) continue; if (feetY >= plat.y-1 && feetY <= plat.y+3 && checkX >= plat.x && checkX <= plat.x+plat.w) return true; } return false; }
+
+// ╔══════════════════════════════════════════════════════════════╗
+// ║  ENEMY HELPERS                                              ║
+// ╚══════════════════════════════════════════════════════════════╝
+
+function resetEnemies() {
+  enemyList = enemyInitData.map(e => ({
+    x: e.x, y: e.y, w: CONFIG.PLAYER_W, h: CONFIG.PLAYER_H,
+    dir: 1, hp: CONFIG.ENEMY_MAX_HP, active: true,
+  }));
+}
+
+function hasGroundAt(checkX, feetY) {
+  for (const plat of platforms) {
+    if (!isSolid(plat)) continue;
+    if (feetY >= plat.y - 1 && feetY <= plat.y + 3 && checkX >= plat.x && checkX <= plat.x + plat.w) return true;
+  }
+  return false;
+}
+
+
+// ╔══════════════════════════════════════════════════════════════╗
+// ║  ORB EFFECT APPLICATION                                     ║
+// ║  Called when an orb is hit (melee) or shot (projectile).    ║
+// ║  givesBounce = true when hit from above or shot.            ║
+// ╚══════════════════════════════════════════════════════════════╝
 
 function applyOrbEffect(orb, givesBounce) {
   const t = orb.type;
-  if (t==='Boost1'||t==='Boost2'||t==='Boost3') { const h={Boost1:200,Boost2:350,Boost3:500}; player.vy=-Math.sqrt(2*CONFIG.GRAVITY*h[t]); player.jumping=true; player.squashX=0.75; player.squashY=1.3; return; }
-  if (t==='SetAir1'||t==='SetAir2'||t==='SetAir3') { const v={SetAir1:1,SetAir2:2,SetAir3:3}; player.airCharges=v[t]; if(givesBounce){player.vy=CONFIG.DOT_BOUNCE;player.jumping=false;player.squashX=1.2;player.squashY=0.8;} return; }
-  if (t==='AddAir1'||t==='AddAir2'||t==='AddAir3') { const v={AddAir1:1,AddAir2:2,AddAir3:3}; player.airCharges+=v[t]; if(givesBounce){player.vy=CONFIG.DOT_BOUNCE;player.jumping=false;player.squashX=1.2;player.squashY=0.8;} return; }
-  if (t==='SetAir1NB'||t==='SetAir2NB'||t==='SetAir3NB') { const v={SetAir1NB:1,SetAir2NB:2,SetAir3NB:3}; player.airCharges=v[t]; return; }
-  if (t==='AddAir1NB'||t==='AddAir2NB'||t==='AddAir3NB') { const v={AddAir1NB:1,AddAir2NB:2,AddAir3NB:3}; player.airCharges+=v[t]; return; }
-  if (t==='Ghosting') { player.airCharges=1; if(givesBounce){player.vy=CONFIG.DOT_BOUNCE;player.jumping=false;player.squashX=1.2;player.squashY=0.8;} player.ghostTimer=CONFIG.GHOST_DURATION; return; }
-  if (t==='NoGhosting') { if(givesBounce){player.vy=CONFIG.DOT_BOUNCE;player.jumping=false;player.squashX=1.2;player.squashY=0.8;} player.ghostTimer=0; return; }
-  if (t==='SlowMo') { if(givesBounce){player.vy=CONFIG.DOT_BOUNCE;player.jumping=false;player.squashX=1.2;player.squashY=0.8;} slowRealTimeLeft=orb.slowDuration||CONFIG.SLOW_DURATION_MS; slowRealTimeTotal=slowRealTimeLeft; timeScale=CONFIG.SLOW_SCALE; return; }
+
+  // Boost — vertical launch
+  if (t === 'Boost1' || t === 'Boost2' || t === 'Boost3') {
+    const h = { Boost1: 200, Boost2: 350, Boost3: 500 };
+    player.vy = -Math.sqrt(2 * CONFIG.GRAVITY * h[t]);
+    player.jumping = true;
+    player.squashX = 0.75; player.squashY = 1.3;
+    return;
+  }
+
+  // SetAir (bouncing)
+  if (t === 'SetAir1' || t === 'SetAir2' || t === 'SetAir3') {
+    const v = { SetAir1: 1, SetAir2: 2, SetAir3: 3 };
+    player.airCharges = v[t];
+    if (givesBounce) { player.vy = CONFIG.DOT_BOUNCE; player.jumping = false; player.squashX = 1.2; player.squashY = 0.8; }
+    return;
+  }
+
+  // AddAir (bouncing)
+  if (t === 'AddAir1' || t === 'AddAir2' || t === 'AddAir3') {
+    const v = { AddAir1: 1, AddAir2: 2, AddAir3: 3 };
+    player.airCharges += v[t];
+    if (givesBounce) { player.vy = CONFIG.DOT_BOUNCE; player.jumping = false; player.squashX = 1.2; player.squashY = 0.8; }
+    return;
+  }
+
+  // SetAir NoBounce
+  if (t === 'SetAir1NB' || t === 'SetAir2NB' || t === 'SetAir3NB') {
+    const v = { SetAir1NB: 1, SetAir2NB: 2, SetAir3NB: 3 };
+    player.airCharges = v[t];
+    return;
+  }
+
+  // AddAir NoBounce
+  if (t === 'AddAir1NB' || t === 'AddAir2NB' || t === 'AddAir3NB') {
+    const v = { AddAir1NB: 1, AddAir2NB: 2, AddAir3NB: 3 };
+    player.airCharges += v[t];
+    return;
+  }
+
+  // Ghosting
+  if (t === 'Ghosting') {
+    player.airCharges = 1;
+    if (givesBounce) { player.vy = CONFIG.DOT_BOUNCE; player.jumping = false; player.squashX = 1.2; player.squashY = 0.8; }
+    player.ghostTimer = CONFIG.GHOST_DURATION;
+    return;
+  }
+
+  // NoGhosting
+  if (t === 'NoGhosting') {
+    if (givesBounce) { player.vy = CONFIG.DOT_BOUNCE; player.jumping = false; player.squashX = 1.2; player.squashY = 0.8; }
+    player.ghostTimer = 0;
+    return;
+  }
+
+  // SlowMo
+  if (t === 'SlowMo') {
+    if (givesBounce) { player.vy = CONFIG.DOT_BOUNCE; player.jumping = false; player.squashX = 1.2; player.squashY = 0.8; }
+    slowRealTimeLeft = orb.slowDuration || CONFIG.SLOW_DURATION_MS;
+    slowRealTimeTotal = slowRealTimeLeft;
+    timeScale = CONFIG.SLOW_SCALE;
+    return;
+  }
+
+  // Bullet orbs — add shots to player
+  if (t === 'Bullet1' || t === 'Bullet2' || t === 'Bullet3') {
+    const v = { Bullet1: 1, Bullet2: 2, Bullet3: 3 };
+    player.shots += v[t];
+    return;
+  }
+
+  // Teleport — move player to orb center, do NOT change air
+  if (t === 'Teleport') {
+    player.x = orb.x - player.w / 2;
+    player.y = orb.y - player.h / 2;
+    player.vx = 0;
+    player.vy = 0;
+    return;
+  }
 }
+
+
+// ╔══════════════════════════════════════════════════════════════╗
+// ║  FINISH CRITERIA + SHOOTING GATE                            ║
+// ╚══════════════════════════════════════════════════════════════╝
 
 function canFinish() {
   for (const cp of checkpointObjects) { if (!cp.cleared) return false; }
   const criteria = LEVELS[currentLevel].finishCriteria || 'default';
-  if (criteria==='killAll') { for (const e of enemyList) { if (e.active) return false; } }
-  else if (criteria==='activateAllOrbs') { if (orbsActivated.size < orbObjects.length) return false; }
+  if (criteria === 'killAll') {
+    for (const e of enemyList) { if (e.active) return false; }
+  } else if (criteria === 'activateAllOrbs') {
+    if (orbsActivated.size < orbObjects.length) return false;
+  }
   return true;
 }
-function tryAdvanceLevel() { if (canFinish()) { advanceLevel(); return true; } return false; }
-function shootingUnlocked() { return currentLevel >= CONFIG.SHOOT_UNLOCK_LEVEL; }
+
+function tryAdvanceLevel() {
+  if (canFinish()) { advanceLevel(); return true; }
+  return false;
+}
+
+function shootingUnlocked() {
+  return currentLevel >= CONFIG.SHOOT_UNLOCK_LEVEL;
+}
+
+
+// ╔══════════════════════════════════════════════════════════════╗
+// ║  LEVEL LOADING                                              ║
+// ╚══════════════════════════════════════════════════════════════╝
 
 function loadLevel(n) {
-  if (n<0||n>=LEVELS.length) return;
-  currentLevel=n; const lvl=LEVELS[n];
-  arenaW=lvl.arenaW; levelH=lvl.levelH||CONFIG.VIEW_H; levelGroundY=levelH-CONFIG.GROUND_H; levelMaxHP=lvl.hp!==undefined?lvl.hp:CONFIG.MAX_HP;
-  spawnX=lvl.spawnX; spawnY=lvl.spawnY;
-  platforms=[];
-  for (const p of lvl.platforms) { if (p.isGround) platforms.push(...splitGroundAroundHoles(p,lvl.floorHoles)); else platforms.push({...p}); }
-  movingPlatList=(lvl.movingPlatforms||[]).map(mp => { const plat={x:mp.x1,y:mp.y1,w:mp.w,h:mp.h,isMoving:true,ghostable:mp.ghostable||false}; platforms.push(plat); const dx=mp.x2-mp.x1,dy=mp.y2-mp.y1; return {plat,x1:mp.x1,y1:mp.y1,x2:mp.x2,y2:mp.y2,speed:mp.speed,dist:Math.sqrt(dx*dx+dy*dy)||1,progress:0,direction:1}; });
-  floorHoleList=(lvl.floorHoles||[]).map(h=>({x:h.x,y:levelGroundY,w:h.w,h:CONFIG.GROUND_H}));
-  spikeList=(lvl.spikeZones||[]).map(sz=>({x:sz.x,y:sz.y,w:sz.w,h:sz.h}));
-  orbObjects=(lvl.orbs||[]).map(o=>({x:o.x,y:o.y,type:o.type,radius:CONFIG.ORB_RADIUS,active:true,respawns:o.respawns!==undefined?o.respawns:true,respawnTime:o.respawnTime!==undefined?o.respawnTime:CONFIG.ORB_RESPAWN_TIME,respawnTimer:0,slowDuration:o.slowDuration!==undefined?o.slowDuration:CONFIG.SLOW_DURATION_MS}));
-  orbsActivated=new Set();
-  finishOrb={x:lvl.finishX,y:lvl.finishY,radius:10,active:true};
-  enemyInitData=(lvl.enemies||[]).map(e=>({x:e.x,y:e.y})); resetEnemies(); projectileList=[];
-  checkpointObjects=(lvl.checkpoints||[]).map(cp=>({x:cp.x,y:cp.y,radius:CONFIG.ORB_RADIUS,cleared:false}));
-  triangleBlockList=(lvl.triangleBlocks||[]).map(tb=>({...tb}));
-  slowRealTimeLeft=0; slowRealTimeTotal=0; timeScale=1.0;
-  respawn(); camera.x=Math.max(0,Math.min(spawnX-CONFIG.VIEW_W/2,arenaW-CONFIG.VIEW_W)); camera.y=0;
-  gameState='start'; canvas.style.cursor='pointer';
-  if (window.parent!==window) window.parent.postMessage({type:'levelLoaded',level:n},'*');
-}
-window.addEventListener('message',(e)=>{if(e.data&&e.data.type==='loadLevel'&&typeof e.data.level==='number')loadLevel(e.data.level);});
+  if (n < 0 || n >= LEVELS.length) return;
+  currentLevel = n;
+  const lvl = LEVELS[n];
 
-function rectsOverlap(a,b){return a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y;}
-function orbToBox(o){return{x:o.x-o.radius,y:o.y-o.radius,w:o.radius*2,h:o.radius*2};}
-function isSolid(plat){if(plat.isGround)return true;if(plat.ghostable&&player.ghostTimer>0)return false;return true;}
-function isInsideGhostable(){for(const plat of platforms){if(plat.ghostable&&rectsOverlap(player,plat))return true;}return false;}
+  arenaW       = lvl.arenaW;
+  levelH       = lvl.levelH || CONFIG.VIEW_H;
+  levelGroundY = levelH - CONFIG.GROUND_H;
+  levelMaxHP   = lvl.hp !== undefined ? lvl.hp : CONFIG.MAX_HP;
+  spawnX       = lvl.spawnX;
+  spawnY       = lvl.spawnY;
+
+  // Build platform list (split ground around holes)
+  platforms = [];
+  for (const p of lvl.platforms) {
+    if (p.isGround) platforms.push(...splitGroundAroundHoles(p, lvl.floorHoles));
+    else platforms.push({ ...p });
+  }
+
+  // Moving platforms — also added to platforms for collision
+  movingPlatList = (lvl.movingPlatforms || []).map(mp => {
+    const plat = { x: mp.x1, y: mp.y1, w: mp.w, h: mp.h, isMoving: true, ghostable: mp.ghostable || false };
+    platforms.push(plat);
+    const dx = mp.x2 - mp.x1, dy = mp.y2 - mp.y1;
+    return { plat, x1: mp.x1, y1: mp.y1, x2: mp.x2, y2: mp.y2, speed: mp.speed, dist: Math.sqrt(dx*dx + dy*dy) || 1, progress: 0, direction: 1 };
+  });
+
+  floorHoleList = (lvl.floorHoles || []).map(h => ({ x: h.x, y: levelGroundY, w: h.w, h: CONFIG.GROUND_H }));
+  spikeList     = (lvl.spikeZones || []).map(sz => ({ x: sz.x, y: sz.y, w: sz.w, h: sz.h }));
+
+  orbObjects = (lvl.orbs || []).map(o => ({
+    x: o.x, y: o.y, type: o.type, radius: CONFIG.ORB_RADIUS, active: true,
+    respawns:     o.respawns !== undefined ? o.respawns : true,
+    respawnTime:  o.respawnTime !== undefined ? o.respawnTime : CONFIG.ORB_RESPAWN_TIME,
+    respawnTimer: 0,
+    slowDuration: o.slowDuration !== undefined ? o.slowDuration : CONFIG.SLOW_DURATION_MS,
+  }));
+  orbsActivated = new Set();
+
+  finishOrb       = { x: lvl.finishX, y: lvl.finishY, radius: 10, active: true };
+  enemyInitData   = (lvl.enemies || []).map(e => ({ x: e.x, y: e.y }));
+  resetEnemies();
+  projectileList  = [];
+
+  checkpointObjects  = (lvl.checkpoints || []).map(cp => ({ x: cp.x, y: cp.y, radius: CONFIG.ORB_RADIUS, cleared: false }));
+  triangleBlockList  = (lvl.triangleBlocks || []).map(tb => ({ ...tb }));
+
+  slowRealTimeLeft = 0; slowRealTimeTotal = 0; timeScale = 1.0;
+  respawn();
+  camera.x = Math.max(0, Math.min(spawnX - CONFIG.VIEW_W / 2, arenaW - CONFIG.VIEW_W));
+  camera.y = 0;
+  gameState = 'start';
+  canvas.style.cursor = 'pointer';
+  if (window.parent !== window) window.parent.postMessage({ type: 'levelLoaded', level: n }, '*');
+}
+
+window.addEventListener('message', (e) => {
+  if (e.data && e.data.type === 'loadLevel' && typeof e.data.level === 'number') loadLevel(e.data.level);
+});
+
+
+// ╔══════════════════════════════════════════════════════════════╗
+// ║  UTILITY FUNCTIONS                                          ║
+// ╚══════════════════════════════════════════════════════════════╝
+
+function rectsOverlap(a, b) {
+  return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+}
+
+function orbToBox(o) {
+  return { x: o.x - o.radius, y: o.y - o.radius, w: o.radius * 2, h: o.radius * 2 };
+}
+
+function isSolid(plat) {
+  if (plat.isGround) return true;
+  if (plat.ghostable && player.ghostTimer > 0) return false;
+  return true;
+}
+
+function isInsideGhostable() {
+  for (const plat of platforms) {
+    if (plat.ghostable && rectsOverlap(player, plat)) return true;
+  }
+  return false;
+}
+
+// Returns the AABB for a projectile based on its travel direction
+function bulletBox(p) {
+  const isHoriz = (p.dy === 0);
+  const bw = isHoriz ? CONFIG.BULLET_W : CONFIG.BULLET_H;
+  const bh = isHoriz ? CONFIG.BULLET_H : CONFIG.BULLET_W;
+  return { x: p.x - bw / 2, y: p.y - bh / 2, w: bw, h: bh };
+}
+
+
+// ╔══════════════════════════════════════════════════════════════╗
+// ║  RESPAWN + DAMAGE                                           ║
+// ╚══════════════════════════════════════════════════════════════╝
 
 function respawn() {
-  player.x=spawnX;player.y=spawnY;player.vx=0;player.vy=0;player.hp=levelMaxHP;player.invTimer=0;player.airCharges=1;
-  player.dashTimer=0;player.dashCooldownTimer=0;player.ghostTimer=0;player.hitActiveTimer=0;player.hitCooldownTimer=0;
-  player.grounded=false;player.jumping=false;player.lastGroundedX=spawnX;player.lastGroundedY=spawnY;
-  player.safeX=spawnX;player.safeY=spawnY;player.squashX=1;player.squashY=1;player.dashTrails=[];
-  player.shots=CONFIG.MAX_SHOTS;player.shotCooldownTimer=0;player.shotHoverTimer=0;player.shotKills=0;
-  player.bufferedJump=false;player.bufferedDash=false;player.onTriangle=false;player.triangleFacing=null;
-  resetEnemies();projectileList=[];
+  player.x = spawnX; player.y = spawnY;
+  player.vx = 0; player.vy = 0;
+  player.hp = levelMaxHP; player.invTimer = 0;
+  player.airCharges = 1;
+  player.dashTimer = 0; player.dashCooldownTimer = 0;
+  player.ghostTimer = 0;
+  player.hitActiveTimer = 0; player.hitCooldownTimer = 0;
+  player.grounded = false; player.jumping = false;
+  player.lastGroundedX = spawnX; player.lastGroundedY = spawnY;
+  player.safeX = spawnX; player.safeY = spawnY;
+  player.squashX = 1; player.squashY = 1; player.dashTrails = [];
+  player.shots = CONFIG.MAX_SHOTS; player.shotCooldownTimer = 0;
+  player.shotHoverTimer = 0; player.shotKills = 0;
+  player.bufferedJump = false; player.bufferedDash = false;
+  player.onTriangle = false; player.triangleFacing = null;
+  player.onGroundedPlat = false;
+  resetEnemies();
+  projectileList = [];
 }
-function takeDamage(amount){if(player.invTimer>0)return;player.hp-=amount;if(player.hp<=0){respawn();return;}player.x=player.lastGroundedX;player.y=player.lastGroundedY;player.vx=0;player.vy=0;player.dashTimer=0;player.invTimer=CONFIG.INVINCIBILITY_FRAMES;}
-function takeEnemyDamage(ecx){if(player.invTimer>0)return;player.hp-=1;if(player.hp<=0){respawn();return;}const d=(player.x+player.w/2)>ecx?1:-1;player.vx=d*CONFIG.ENEMY_KNOCKBACK;player.vy=CONFIG.ENEMY_KNOCKBACK_Y;player.invTimer=CONFIG.INVINCIBILITY_FRAMES;}
-function advanceLevel(){const next=(currentLevel+1)%LEVELS.length;loadLevel(next);gameState='transition';transitionTimer=TRANSITION_TOTAL;canvas.style.cursor='default';}
+
+function takeDamage(amount) {
+  if (player.invTimer > 0) return;
+  player.hp -= amount;
+  if (player.hp <= 0) { respawn(); return; }
+  player.x = player.lastGroundedX; player.y = player.lastGroundedY;
+  player.vx = 0; player.vy = 0; player.dashTimer = 0;
+  player.invTimer = CONFIG.INVINCIBILITY_FRAMES;
+}
+
+function takeEnemyDamage(enemyCenterX) {
+  if (player.invTimer > 0) return;
+  player.hp -= 1;
+  if (player.hp <= 0) { respawn(); return; }
+  const pushDir = (player.x + player.w / 2) > enemyCenterX ? 1 : -1;
+  player.vx = pushDir * CONFIG.ENEMY_KNOCKBACK;
+  player.vy = CONFIG.ENEMY_KNOCKBACK_Y;
+  player.invTimer = CONFIG.INVINCIBILITY_FRAMES;
+}
+
+function advanceLevel() {
+  const next = (currentLevel + 1) % LEVELS.length;
+  loadLevel(next);
+  gameState = 'transition'; transitionTimer = TRANSITION_TOTAL; canvas.style.cursor = 'default';
+}
+
+
+// ╔══════════════════════════════════════════════════════════════╗
+// ║  COLLISION — platforms, triangles                           ║
+// ╚══════════════════════════════════════════════════════════════╝
 
 function resolveCollisions() {
-  player.grounded=false;
-  player.x+=player.vx;
-  for(const plat of platforms){if(!isSolid(plat))continue;if(!rectsOverlap(player,plat))continue;if(player.vx>0){player.x=plat.x-player.w;player.vx=0;if(player.dashTimer>0)player.dashTimer=0;}else if(player.vx<0){player.x=plat.x+plat.w;player.vx=0;if(player.dashTimer>0)player.dashTimer=0;}}
-  player.y+=player.vy;
-  for(const plat of platforms){if(!isSolid(plat))continue;if(!rectsOverlap(player,plat))continue;if(player.vy>0){player.y=plat.y-player.h;if(player.vy>4){player.squashX=1.3;player.squashY=0.7;player.landTimer=8;}player.vy=0;player.grounded=true;player.jumping=false;}else if(player.vy<0){player.y=plat.y+plat.h;player.vy=0;}}
+  player.grounded = false;
+  player.onGroundedPlat = false;
+
+  // Horizontal
+  player.x += player.vx;
+  for (const plat of platforms) {
+    if (!isSolid(plat) || !rectsOverlap(player, plat)) continue;
+    if (player.vx > 0) { player.x = plat.x - player.w; player.vx = 0; if (player.dashTimer > 0) player.dashTimer = 0; }
+    else if (player.vx < 0) { player.x = plat.x + plat.w; player.vx = 0; if (player.dashTimer > 0) player.dashTimer = 0; }
+  }
+
+  // Vertical
+  player.y += player.vy;
+  for (const plat of platforms) {
+    if (!isSolid(plat) || !rectsOverlap(player, plat)) continue;
+    if (player.vy > 0) {
+      player.y = plat.y - player.h;
+      if (player.vy > 4) { player.squashX = 1.3; player.squashY = 0.7; player.landTimer = 8; }
+      player.vy = 0; player.grounded = true; player.jumping = false;
+      if (plat.grounded) player.onGroundedPlat = true;
+    } else if (player.vy < 0) {
+      player.y = plat.y + plat.h; player.vy = 0;
+    }
+  }
 }
 
 function resolveTriangleCollisions() {
-  player.onTriangle=false; player.triangleFacing=null;
+  player.onTriangle = false;
+  player.triangleFacing = null;
+
   for (const tri of triangleBlockList) {
-    const pcx=player.x+player.w/2, pb=player.y+player.h;
-    if(player.x+player.w<=tri.x||player.x>=tri.x+tri.w||pb<=tri.y||player.y>=tri.y+tri.h) continue;
+    const pcx = player.x + player.w / 2;
+    const pb  = player.y + player.h;
+    if (player.x + player.w <= tri.x || player.x >= tri.x + tri.w || pb <= tri.y || player.y >= tri.y + tri.h) continue;
+
+    // Compute slope surface Y at player center
     let surfaceY;
-    if(tri.facing==='left'){const t=Math.max(0,Math.min(1,(pcx-tri.x)/tri.w));surfaceY=tri.y+tri.h-t*tri.h;}
-    else{const t=Math.max(0,Math.min(1,(pcx-tri.x)/tri.w));surfaceY=tri.y+t*tri.h;}
-    if(pb>surfaceY&&pb<=tri.y+tri.h+4){
-      player.y=surfaceY-player.h;if(player.vy>0)player.vy=0;player.grounded=true;player.jumping=false;
-      player.onTriangle=true;player.triangleFacing=tri.facing;
-      const hyp=Math.sqrt(tri.w*tri.w+tri.h*tri.h),slideAccel=CONFIG.GRAVITY*(tri.h/hyp),cosA=tri.w/hyp;
-      if(tri.facing==='left')player.vx-=slideAccel*cosA;else player.vx+=slideAccel*cosA;
+    if (tri.facing === 'left') {
+      const t = Math.max(0, Math.min(1, (pcx - tri.x) / tri.w));
+      surfaceY = tri.y + tri.h - t * tri.h;
+    } else {
+      const t = Math.max(0, Math.min(1, (pcx - tri.x) / tri.w));
+      surfaceY = tri.y + t * tri.h;
     }
-    if(tri.facing==='left'){if(player.x+player.w>tri.x+tri.w&&player.vx<0&&pb>tri.y&&player.y<tri.y+tri.h){player.x=tri.x+tri.w;player.vx=0;if(player.dashTimer>0)player.dashTimer=0;}}
-    else{if(player.x<tri.x&&player.vx>0&&pb>tri.y&&player.y<tri.y+tri.h){player.x=tri.x-player.w;player.vx=0;if(player.dashTimer>0)player.dashTimer=0;}}
+
+    // Push player onto slope
+    if (pb > surfaceY && pb <= tri.y + tri.h + 4) {
+      player.y = surfaceY - player.h;
+      if (player.vy > 0) player.vy = 0;
+      player.grounded = true; player.jumping = false;
+      player.onTriangle = true; player.triangleFacing = tri.facing;
+      // Slide force
+      const hyp = Math.sqrt(tri.w * tri.w + tri.h * tri.h);
+      const slideAccel = CONFIG.GRAVITY * (tri.h / hyp);
+      const cosA = tri.w / hyp;
+      if (tri.facing === 'left') player.vx -= slideAccel * cosA;
+      else player.vx += slideAccel * cosA;
+    }
+
+    // Vertical wall collision
+    if (tri.facing === 'left') {
+      if (player.x + player.w > tri.x + tri.w && player.vx < 0 && pb > tri.y && player.y < tri.y + tri.h) {
+        player.x = tri.x + tri.w; player.vx = 0; if (player.dashTimer > 0) player.dashTimer = 0;
+      }
+    } else {
+      if (player.x < tri.x && player.vx > 0 && pb > tri.y && player.y < tri.y + tri.h) {
+        player.x = tri.x - player.w; player.vx = 0; if (player.dashTimer > 0) player.dashTimer = 0;
+      }
+    }
   }
 }
 
-function computeHitBox(dir){const r=CONFIG.HIT_RANGE,t=CONFIG.HIT_THICKNESS;switch(dir){case'right':return{x:player.x+player.w,y:player.y+player.h/2-t/2,w:r,h:t};case'left':return{x:player.x-r,y:player.y+player.h/2-t/2,w:r,h:t};case'up':return{x:player.x+player.w/2-t/2,y:player.y-r,w:t,h:r};case'down':return{x:player.x+player.w/2-t/2,y:player.y+player.h,w:t,h:r};}}
+function computeHitBox(dir) {
+  const range = CONFIG.HIT_RANGE, thick = CONFIG.HIT_THICKNESS;
+  switch (dir) {
+    case 'right': return { x: player.x + player.w, y: player.y + player.h/2 - thick/2, w: range, h: thick };
+    case 'left':  return { x: player.x - range,    y: player.y + player.h/2 - thick/2, w: range, h: thick };
+    case 'up':    return { x: player.x + player.w/2 - thick/2, y: player.y - range, w: thick, h: range };
+    case 'down':  return { x: player.x + player.w/2 - thick/2, y: player.y + player.h, w: thick, h: range };
+  }
+}
+
+
+// ╔══════════════════════════════════════════════════════════════╗
+// ║  MOVING PLATFORM UPDATE                                     ║
+// ╚══════════════════════════════════════════════════════════════╝
 
 function updateMovingPlatforms() {
   for (const mp of movingPlatList) {
-    const oldX=mp.plat.x,oldY=mp.plat.y;
-    const playerBottom=player.y+player.h;
-    const isOn=player.grounded&&playerBottom>=oldY-2&&playerBottom<=oldY+2&&player.x+player.w>oldX&&player.x<oldX+mp.plat.w;
-    mp.progress+=(mp.speed/mp.dist)*mp.direction;
-    if(mp.progress>=1){mp.progress=1;mp.direction=-1;}else if(mp.progress<=0){mp.progress=0;mp.direction=1;}
-    mp.plat.x=mp.x1+(mp.x2-mp.x1)*mp.progress;mp.plat.y=mp.y1+(mp.y2-mp.y1)*mp.progress;
-    if(isOn){player.x+=mp.plat.x-oldX;player.y+=mp.plat.y-oldY;}
+    const oldX = mp.plat.x, oldY = mp.plat.y;
+    const playerBottom = player.y + player.h;
+    const isOn = player.grounded && playerBottom >= oldY - 2 && playerBottom <= oldY + 2 &&
+                 player.x + player.w > oldX && player.x < oldX + mp.plat.w;
+
+    mp.progress += (mp.speed / mp.dist) * mp.direction;
+    if (mp.progress >= 1) { mp.progress = 1; mp.direction = -1; }
+    else if (mp.progress <= 0) { mp.progress = 0; mp.direction = 1; }
+
+    mp.plat.x = mp.x1 + (mp.x2 - mp.x1) * mp.progress;
+    mp.plat.y = mp.y1 + (mp.y2 - mp.y1) * mp.progress;
+
+    if (isOn) { player.x += mp.plat.x - oldX; player.y += mp.plat.y - oldY; }
   }
 }
+
+
+// ╔══════════════════════════════════════════════════════════════╗
+// ║  PROJECTILE UPDATE                                          ║
+// ║  Handles wall/enemy/orb/checkpoint/finish/bullet collisions ║
+// ╚══════════════════════════════════════════════════════════════╝
 
 function updateProjectiles() {
-  for(let i=projectileList.length-1;i>=0;i--){
-    const p=projectileList[i];p.x+=p.dx;p.y+=p.dy;
-    if(p.x<-50||p.x>arenaW+50||p.y<-50||p.y>levelH+50){projectileList.splice(i,1);continue;}
-    let hitWall=false;for(const plat of platforms){if(plat.ghostable)continue;if(p.x>=plat.x&&p.x<=plat.x+plat.w&&p.y>=plat.y&&p.y<=plat.y+plat.h){hitWall=true;break;}}
-    if(hitWall){projectileList.splice(i,1);continue;}
-    let hitEnemy=false;for(const enemy of enemyList){if(!enemy.active)continue;if(p.x>=enemy.x&&p.x<=enemy.x+enemy.w&&p.y>=enemy.y&&p.y<=enemy.y+enemy.h){enemy.hp-=CONFIG.SHOT_ENEMY_DAMAGE;if(enemy.hp<=0){enemy.active=false;player.shotKills++;if(player.shotKills>=CONFIG.KILLS_PER_REFUND){player.shotKills-=CONFIG.KILLS_PER_REFUND;player.shots=Math.min(player.shots+1,CONFIG.MAX_SHOTS);}}hitEnemy=true;break;}}
-    if(hitEnemy){projectileList.splice(i,1);continue;}
-    let hitOrb=false;for(let oi=0;oi<orbObjects.length;oi++){const orb=orbObjects[oi];if(!orb.active)continue;const ob=orbToBox(orb);if(p.x>=ob.x&&p.x<=ob.x+ob.w&&p.y>=ob.y&&p.y<=ob.y+ob.h){orb.active=false;orb.respawnTimer=orb.respawnTime;orbsActivated.add(oi);applyOrbEffect(orb,true);hitOrb=true;break;}}
-    if(hitOrb){projectileList.splice(i,1);continue;}
-    let hitCP=false;for(const cp of checkpointObjects){if(cp.cleared)continue;const cb=orbToBox(cp);if(p.x>=cb.x&&p.x<=cb.x+cb.w&&p.y>=cb.y&&p.y<=cb.y+cb.h){cp.cleared=true;hitCP=true;break;}}
-    if(hitCP){projectileList.splice(i,1);continue;}
-    if(finishOrb&&finishOrb.active){const fb=orbToBox(finishOrb);if(p.x>=fb.x&&p.x<=fb.x+fb.w&&p.y>=fb.y&&p.y<=fb.y+fb.h){projectileList.splice(i,1);tryAdvanceLevel();return;}}
+  for (let i = projectileList.length - 1; i >= 0; i--) {
+    const p = projectileList[i];
+    p.x += p.dx; p.y += p.dy;
+
+    // Out of bounds
+    if (p.x < -50 || p.x > arenaW + 50 || p.y < -50 || p.y > levelH + 50) {
+      projectileList.splice(i, 1); continue;
+    }
+
+    const bb = bulletBox(p);
+
+    // Wall collision (non-ghostable solid platforms)
+    let hitWall = false;
+    for (const plat of platforms) {
+      if (plat.ghostable) continue;
+      if (rectsOverlap(bb, plat)) { hitWall = true; break; }
+    }
+    if (hitWall) { projectileList.splice(i, 1); continue; }
+
+    // Enemy collision
+    let hitEnemy = false;
+    for (const enemy of enemyList) {
+      if (!enemy.active) continue;
+      if (rectsOverlap(bb, enemy)) {
+        enemy.hp -= CONFIG.SHOT_ENEMY_DAMAGE;
+        if (enemy.hp <= 0) {
+          enemy.active = false;
+          player.shotKills++;
+          if (player.shotKills >= CONFIG.KILLS_PER_REFUND) {
+            player.shotKills -= CONFIG.KILLS_PER_REFUND;
+            player.shots++;
+          }
+        }
+        hitEnemy = true; break;
+      }
+    }
+    if (hitEnemy) { projectileList.splice(i, 1); continue; }
+
+    // Orb collision
+    let hitOrb = false;
+    for (let oi = 0; oi < orbObjects.length; oi++) {
+      const orb = orbObjects[oi];
+      if (!orb.active) continue;
+      if (rectsOverlap(bb, orbToBox(orb))) {
+        orb.active = false;
+        orb.respawnTimer = orb.respawnTime;
+        orbsActivated.add(oi);
+        applyOrbEffect(orb, true);
+        hitOrb = true; break;
+      }
+    }
+    if (hitOrb) { projectileList.splice(i, 1); continue; }
+
+    // Checkpoint collision
+    let hitCP = false;
+    for (const cp of checkpointObjects) {
+      if (cp.cleared) continue;
+      if (rectsOverlap(bb, orbToBox(cp))) { cp.cleared = true; hitCP = true; break; }
+    }
+    if (hitCP) { projectileList.splice(i, 1); continue; }
+
+    // Finish orb collision
+    if (finishOrb && finishOrb.active && rectsOverlap(bb, orbToBox(finishOrb))) {
+      projectileList.splice(i, 1);
+      tryAdvanceLevel(); return;
+    }
   }
 }
+
+
+// ╔══════════════════════════════════════════════════════════════╗
+// ║  ENEMY UPDATE                                               ║
+// ╚══════════════════════════════════════════════════════════════╝
 
 function updateEnemies() {
-  for(let i=0;i<enemyList.length;i++){const enemy=enemyList[i];if(!enemy.active)continue;const speed=CONFIG.ENEMY_SPEED,nextX=enemy.x+speed*enemy.dir,feetY=enemy.y+enemy.h,leadX=enemy.dir>0?nextX+enemy.w:nextX;const groundBelow=hasGroundAt(leadX,feetY);const nextBox={x:nextX,y:enemy.y,w:enemy.w,h:enemy.h};let hitsSpike=false;for(const sp of spikeList){if(rectsOverlap(nextBox,sp)){hitsSpike=true;break;}}const tooClose=Math.abs(nextX+enemy.w/2-spawnX)<CONFIG.ENEMY_SPAWN_DIST;if(!groundBelow||hitsSpike||tooClose)enemy.dir*=-1;else enemy.x=nextX;if(player.invTimer<=0&&rectsOverlap(player,enemy))takeEnemyDamage(enemy.x+enemy.w/2);}
+  for (let i = 0; i < enemyList.length; i++) {
+    const enemy = enemyList[i];
+    if (!enemy.active) continue;
+    const nextX = enemy.x + CONFIG.ENEMY_SPEED * enemy.dir;
+    const feetY = enemy.y + enemy.h;
+    const leadX = enemy.dir > 0 ? nextX + enemy.w : nextX;
+    const groundBelow = hasGroundAt(leadX, feetY);
+    const nextBox = { x: nextX, y: enemy.y, w: enemy.w, h: enemy.h };
+    let hitsSpike = false;
+    for (const sp of spikeList) { if (rectsOverlap(nextBox, sp)) { hitsSpike = true; break; } }
+    const tooClose = Math.abs(nextX + enemy.w / 2 - spawnX) < CONFIG.ENEMY_SPAWN_DIST;
+    if (!groundBelow || hitsSpike || tooClose) enemy.dir *= -1;
+    else enemy.x = nextX;
+    if (player.invTimer <= 0 && rectsOverlap(player, enemy)) takeEnemyDamage(enemy.x + enemy.w / 2);
+  }
 }
 
+
+// ╔══════════════════════════════════════════════════════════════╗
+// ║  MAIN UPDATE LOOP                                           ║
+// ╚══════════════════════════════════════════════════════════════╝
+
 function update() {
-  if(gameState==='transition'){transitionTimer--;if(transitionTimer<=0)gameState='playing';}
-  if(gameState!=='playing'&&gameState!=='transition')return;
-  const moveLeft=keys['ArrowLeft'],moveRight=keys['ArrowRight'],holdUp=keys['ArrowUp'],holdDown=keys['ArrowDown'];
-  if(player.invTimer>0)player.invTimer--;
+  if (gameState === 'transition') { transitionTimer--; if (transitionTimer <= 0) gameState = 'playing'; }
+  if (gameState !== 'playing' && gameState !== 'transition') return;
+
+  const moveLeft = keys['ArrowLeft'], moveRight = keys['ArrowRight'];
+  const holdUp   = keys['ArrowUp'],   holdDown  = keys['ArrowDown'];
+
+  if (player.invTimer > 0) player.invTimer--;
+
+  // Moving platforms (before player movement for carry)
   updateMovingPlatforms();
-  if(player.grounded&&!player.onTriangle){player.airCharges=1;player.lastGroundedX=player.x;player.lastGroundedY=player.y;}
-  if(player.shotHoverTimer>0){player.vy=0;player.shotHoverTimer--;if(jumpPressedThisFrame)player.bufferedJump=true;if(dashPressedThisFrame)player.bufferedDash=true;if(player.shotHoverTimer<=0){if(player.bufferedJump){jumpPressedThisFrame=true;player.jumpBufferTimer=CONFIG.JUMP_BUFFER;}if(player.bufferedDash)dashPressedThisFrame=true;player.bufferedJump=false;player.bufferedDash=false;}}
-  const movementLocked=player.shotHoverTimer>0,onTri=player.onTriangle;
-  if(player.dashTimer>0){player.vx=CONFIG.DASH_SPEED*player.dashDirX;player.vy=0;if(player.dashTimer%2===0)player.dashTrails.push({x:player.x,y:player.y,alpha:0.6});player.dashTimer--;}
-  else if(!movementLocked&&!onTri){if(moveLeft&&!moveRight){player.vx-=CONFIG.MOVE_ACCEL;if(player.vx<-CONFIG.MAX_MOVE_SPEED)player.vx=-CONFIG.MAX_MOVE_SPEED;player.facingRight=false;}else if(moveRight&&!moveLeft){player.vx+=CONFIG.MOVE_ACCEL;if(player.vx>CONFIG.MAX_MOVE_SPEED)player.vx=CONFIG.MAX_MOVE_SPEED;player.facingRight=true;}else{player.vx*=CONFIG.MOVE_DECEL;if(Math.abs(player.vx)<0.1)player.vx=0;}if(player.shotHoverTimer<=0){player.vy+=CONFIG.GRAVITY;if(player.vy>CONFIG.TERMINAL_VELOCITY)player.vy=CONFIG.TERMINAL_VELOCITY;}}
-  else if(onTri&&player.dashTimer<=0){player.vy+=CONFIG.GRAVITY;if(player.vy>CONFIG.TERMINAL_VELOCITY)player.vy=CONFIG.TERMINAL_VELOCITY;player.vx*=0.95;}
-  else{player.vx*=CONFIG.MOVE_DECEL;if(Math.abs(player.vx)<0.1)player.vx=0;}
 
-  if(player.dashCooldownTimer>0)player.dashCooldownTimer--;
-  if(!movementLocked&&dashPressedThisFrame&&player.dashTimer<=0&&player.dashCooldownTimer<=0){
-    let dashAllowed=true;
-    if(onTri){const desiredDir=player.facingRight?1:-1;if(player.triangleFacing==='left'&&desiredDir>0)dashAllowed=false;if(player.triangleFacing==='right'&&desiredDir<0)dashAllowed=false;}
-    if(dashAllowed){const isGrounded=player.grounded||player.coyoteTimer>0,canDash=isGrounded||player.airCharges>0;if(canDash){player.dashTimer=CONFIG.DASH_DURATION;player.dashCooldownTimer=CONFIG.DASH_COOLDOWN;player.dashDirX=player.facingRight?1:-1;player.vy=0;player.jumping=false;if(!isGrounded)player.airCharges--;else{player.coyoteTimer=0;player.grounded=false;}player.squashX=1.4;player.squashY=0.7;}}
-  }
-  if(player.grounded)player.coyoteTimer=CONFIG.COYOTE_TIME;else if(player.coyoteTimer>0)player.coyoteTimer--;
-  if(jumpPressedThisFrame&&!movementLocked&&!onTri)player.jumpBufferTimer=CONFIG.JUMP_BUFFER;
-  if(player.jumpBufferTimer>0)player.jumpBufferTimer--;
-  if(player.dashTimer<=0&&!movementLocked&&!onTri){const canGJ=player.coyoteTimer>0,canAJ=!canGJ&&player.airCharges>0;if((canGJ||canAJ)&&player.jumpBufferTimer>0){player.vy=CONFIG.JUMP_VELOCITY;player.grounded=false;player.coyoteTimer=0;player.jumpBufferTimer=0;player.jumping=true;if(canAJ)player.airCharges--;player.squashX=0.75;player.squashY=1.3;}}
-  if(jumpReleasedThisFrame&&player.jumping&&player.vy<0){player.vy*=CONFIG.JUMP_CUT_MULTIPLIER;player.jumping=false;}
-
-  if(player.shotCooldownTimer>0)player.shotCooldownTimer--;
-  if(shootingUnlocked()&&shootPressedThisFrame&&player.shotCooldownTimer<=0&&player.shots>0){
-    let shotDir;if(holdUp)shotDir='up';else if(holdDown)shotDir='down';else shotDir=player.facingRight?'right':'left';
-    let dx=0,dy=0;const spd=CONFIG.SHOT_SPEED;if(shotDir==='right')dx=spd;else if(shotDir==='left')dx=-spd;else if(shotDir==='up')dy=-spd;else if(shotDir==='down')dy=spd;
-    projectileList.push({x:player.x+player.w/2,y:player.y+player.h/2,dx,dy});player.shots--;player.shotCooldownTimer=CONFIG.SHOT_COOLDOWN;
-    if(shotDir==='left'||shotDir==='right'){player.vy=0;player.shotHoverTimer=CONFIG.SHOT_HOVER_FRAMES;player.vx+=(shotDir==='right'?-CONFIG.SHOT_KNOCKBACK:CONFIG.SHOT_KNOCKBACK);player.bufferedJump=false;player.bufferedDash=false;}
+  // Ground resets air to 1 and saves safe position (triangles excluded)
+  if (player.grounded && !player.onTriangle) {
+    player.airCharges = 1;
+    player.lastGroundedX = player.x;
+    player.lastGroundedY = player.y;
   }
 
-  if(player.hitCooldownTimer>0)player.hitCooldownTimer--;
-  if(hitPressedThisFrame&&player.hitCooldownTimer<=0){if(holdUp)player.hitDir='up';else if(holdDown)player.hitDir='down';else player.hitDir=player.facingRight?'right':'left';player.hitActiveTimer=CONFIG.HIT_ACTIVE_FRAMES;player.hitCooldownTimer=CONFIG.HIT_COOLDOWN;player.hitKnockbackDone=false;player.hitSpikeBounceDone=false;player.hitEnemyIds=new Set();}
-  if(player.hitActiveTimer>0){
-    const hitBox=computeHitBox(player.hitDir);
-    if(!player.hitKnockbackDone){for(const plat of platforms){if(rectsOverlap(hitBox,plat)){const kb=CONFIG.HIT_KNOCKBACK;switch(player.hitDir){case'right':player.vx-=kb;break;case'left':player.vx+=kb;break;case'up':player.vy+=kb;break;case'down':player.vy-=kb;break;}player.hitKnockbackDone=true;break;}}}
-    for(let oi=0;oi<orbObjects.length;oi++){const orb=orbObjects[oi];if(!orb.active||!rectsOverlap(hitBox,orbToBox(orb)))continue;orb.active=false;orb.respawnTimer=orb.respawnTime;orbsActivated.add(oi);applyOrbEffect(orb,player.hitDir==='down');}
-    for(const cp of checkpointObjects){if(!cp.cleared&&rectsOverlap(hitBox,orbToBox(cp)))cp.cleared=true;}
-    for(let i=0;i<enemyList.length;i++){const enemy=enemyList[i];if(!enemy.active||(player.hitEnemyIds&&player.hitEnemyIds.has(i))||!rectsOverlap(hitBox,enemy))continue;enemy.hp--;if(enemy.hp<=0)enemy.active=false;if(player.hitEnemyIds)player.hitEnemyIds.add(i);if(player.hitDir==='down'){player.vy=CONFIG.DOT_BOUNCE;player.jumping=false;player.airCharges=1;player.squashX=1.2;player.squashY=0.8;}}
-    if(finishOrb&&finishOrb.active&&rectsOverlap(hitBox,orbToBox(finishOrb))){if(tryAdvanceLevel())return;}
-    if(!player.hitSpikeBounceDone&&player.hitDir==='down'){for(const sp of spikeList){if(rectsOverlap(hitBox,sp)){player.vy=CONFIG.DOT_BOUNCE;player.jumping=false;player.airCharges=1;player.squashX=1.2;player.squashY=0.8;player.hitSpikeBounceDone=true;break;}}}
+  // Shot hover
+  if (player.shotHoverTimer > 0) {
+    player.vy = 0;
+    player.shotHoverTimer--;
+    if (jumpPressedThisFrame) player.bufferedJump = true;
+    if (dashPressedThisFrame) player.bufferedDash = true;
+    if (player.shotHoverTimer <= 0) {
+      if (player.bufferedJump) { jumpPressedThisFrame = true; player.jumpBufferTimer = CONFIG.JUMP_BUFFER; }
+      if (player.bufferedDash) dashPressedThisFrame = true;
+      player.bufferedJump = false; player.bufferedDash = false;
+    }
+  }
+
+  const movementLocked = player.shotHoverTimer > 0;
+  const onTri = player.onTriangle;
+  const onGP  = player.onGroundedPlat;
+
+  // --- Movement ---
+  if (player.dashTimer > 0) {
+    player.vx = CONFIG.DASH_SPEED * player.dashDirX;
+    player.vy = 0;
+    if (player.dashTimer % 2 === 0) player.dashTrails.push({ x: player.x, y: player.y, alpha: 0.6 });
+    player.dashTimer--;
+  } else if (!movementLocked && !onTri) {
+    if (moveLeft && !moveRight)      { player.vx -= CONFIG.MOVE_ACCEL; if (player.vx < -CONFIG.MAX_MOVE_SPEED) player.vx = -CONFIG.MAX_MOVE_SPEED; player.facingRight = false; }
+    else if (moveRight && !moveLeft) { player.vx += CONFIG.MOVE_ACCEL; if (player.vx >  CONFIG.MAX_MOVE_SPEED) player.vx =  CONFIG.MAX_MOVE_SPEED; player.facingRight = true; }
+    else { player.vx *= CONFIG.MOVE_DECEL; if (Math.abs(player.vx) < 0.1) player.vx = 0; }
+    if (player.shotHoverTimer <= 0) {
+      player.vy += CONFIG.GRAVITY;
+      if (player.vy > CONFIG.TERMINAL_VELOCITY) player.vy = CONFIG.TERMINAL_VELOCITY;
+    }
+  } else if (onTri && player.dashTimer <= 0) {
+    player.vy += CONFIG.GRAVITY;
+    if (player.vy > CONFIG.TERMINAL_VELOCITY) player.vy = CONFIG.TERMINAL_VELOCITY;
+    player.vx *= 0.95;
+  } else {
+    player.vx *= CONFIG.MOVE_DECEL;
+    if (Math.abs(player.vx) < 0.1) player.vx = 0;
+  }
+
+  // --- Dash ---
+  if (player.dashCooldownTimer > 0) player.dashCooldownTimer--;
+  if (!movementLocked && dashPressedThisFrame && player.dashTimer <= 0 && player.dashCooldownTimer <= 0 && !onGP) {
+    let dashAllowed = true;
+    if (onTri) {
+      const desiredDir = player.facingRight ? 1 : -1;
+      if (player.triangleFacing === 'left'  && desiredDir > 0) dashAllowed = false;
+      if (player.triangleFacing === 'right' && desiredDir < 0) dashAllowed = false;
+    }
+    if (dashAllowed) {
+      const isGrounded = player.grounded || player.coyoteTimer > 0;
+      const canDash = isGrounded || player.airCharges > 0;
+      if (canDash) {
+        player.dashTimer = CONFIG.DASH_DURATION;
+        player.dashCooldownTimer = CONFIG.DASH_COOLDOWN;
+        player.dashDirX = player.facingRight ? 1 : -1;
+        player.vy = 0; player.jumping = false;
+        if (!isGrounded) player.airCharges--;
+        else { player.coyoteTimer = 0; player.grounded = false; }
+        player.squashX = 1.4; player.squashY = 0.7;
+      }
+    }
+  }
+
+  // --- Coyote + jump buffer ---
+  if (player.grounded) player.coyoteTimer = CONFIG.COYOTE_TIME;
+  else if (player.coyoteTimer > 0) player.coyoteTimer--;
+
+  // Jump — blocked on triangle and grounded platforms
+  if (jumpPressedThisFrame && !movementLocked && !onTri && !onGP) player.jumpBufferTimer = CONFIG.JUMP_BUFFER;
+  if (player.jumpBufferTimer > 0) player.jumpBufferTimer--;
+
+  if (player.dashTimer <= 0 && !movementLocked && !onTri && !onGP) {
+    const canGJ = player.coyoteTimer > 0;
+    const canAJ = !canGJ && player.airCharges > 0;
+    if ((canGJ || canAJ) && player.jumpBufferTimer > 0) {
+      player.vy = CONFIG.JUMP_VELOCITY;
+      player.grounded = false; player.coyoteTimer = 0; player.jumpBufferTimer = 0;
+      player.jumping = true;
+      if (canAJ) player.airCharges--;
+      player.squashX = 0.75; player.squashY = 1.3;
+    }
+  }
+
+  if (jumpReleasedThisFrame && player.jumping && player.vy < 0) {
+    player.vy *= CONFIG.JUMP_CUT_MULTIPLIER; player.jumping = false;
+  }
+
+  // --- Shooting ---
+  if (player.shotCooldownTimer > 0) player.shotCooldownTimer--;
+  if (shootingUnlocked() && shootPressedThisFrame && player.shotCooldownTimer <= 0 && player.shots > 0) {
+    let shotDir;
+    if (holdUp) shotDir = 'up'; else if (holdDown) shotDir = 'down';
+    else shotDir = player.facingRight ? 'right' : 'left';
+
+    let dx = 0, dy = 0;
+    const spd = CONFIG.SHOT_SPEED;
+    if (shotDir === 'right') dx = spd; else if (shotDir === 'left') dx = -spd;
+    else if (shotDir === 'up') dy = -spd; else if (shotDir === 'down') dy = spd;
+
+    projectileList.push({ x: player.x + player.w / 2, y: player.y + player.h / 2, dx, dy });
+    player.shots--;
+    player.shotCooldownTimer = CONFIG.SHOT_COOLDOWN;
+
+    if (shotDir === 'left' || shotDir === 'right') {
+      player.vy = 0;
+      player.shotHoverTimer = CONFIG.SHOT_HOVER_FRAMES;
+      player.vx += (shotDir === 'right' ? -CONFIG.SHOT_KNOCKBACK : CONFIG.SHOT_KNOCKBACK);
+      player.bufferedJump = false; player.bufferedDash = false;
+    }
+  }
+
+  // --- Melee hit ---
+  if (player.hitCooldownTimer > 0) player.hitCooldownTimer--;
+  if (hitPressedThisFrame && player.hitCooldownTimer <= 0) {
+    if (holdUp) player.hitDir = 'up'; else if (holdDown) player.hitDir = 'down';
+    else player.hitDir = player.facingRight ? 'right' : 'left';
+    player.hitActiveTimer = CONFIG.HIT_ACTIVE_FRAMES;
+    player.hitCooldownTimer = CONFIG.HIT_COOLDOWN;
+    player.hitKnockbackDone = false; player.hitSpikeBounceDone = false;
+    player.hitEnemyIds = new Set();
+  }
+
+  if (player.hitActiveTimer > 0) {
+    const hitBox = computeHitBox(player.hitDir);
+
+    // Wall knockback
+    if (!player.hitKnockbackDone) {
+      for (const plat of platforms) {
+        if (rectsOverlap(hitBox, plat)) {
+          const kb = CONFIG.HIT_KNOCKBACK;
+          switch (player.hitDir) {
+            case 'right': player.vx -= kb; break; case 'left': player.vx += kb; break;
+            case 'up':    player.vy += kb; break; case 'down': player.vy -= kb; break;
+          }
+          player.hitKnockbackDone = true; break;
+        }
+      }
+    }
+
+    // Orb hits
+    for (let oi = 0; oi < orbObjects.length; oi++) {
+      const orb = orbObjects[oi];
+      if (!orb.active || !rectsOverlap(hitBox, orbToBox(orb))) continue;
+      orb.active = false; orb.respawnTimer = orb.respawnTime;
+      orbsActivated.add(oi);
+      applyOrbEffect(orb, player.hitDir === 'down');
+    }
+
+    // Checkpoint hits
+    for (const cp of checkpointObjects) {
+      if (!cp.cleared && rectsOverlap(hitBox, orbToBox(cp))) cp.cleared = true;
+    }
+
+    // Enemy hits
+    for (let i = 0; i < enemyList.length; i++) {
+      const enemy = enemyList[i];
+      if (!enemy.active || (player.hitEnemyIds && player.hitEnemyIds.has(i)) || !rectsOverlap(hitBox, enemy)) continue;
+      enemy.hp--;
+      if (enemy.hp <= 0) enemy.active = false;
+      if (player.hitEnemyIds) player.hitEnemyIds.add(i);
+      if (player.hitDir === 'down') {
+        player.vy = CONFIG.DOT_BOUNCE; player.jumping = false;
+        player.airCharges = 1; player.squashX = 1.2; player.squashY = 0.8;
+      }
+    }
+
+    // Bullet bounce — hitting a bullet from above bounces the player and sets air to 2
+    if (player.hitDir === 'down') {
+      for (const p of projectileList) {
+        if (rectsOverlap(hitBox, bulletBox(p))) {
+          player.vy = CONFIG.DOT_BOUNCE; player.jumping = false;
+          player.airCharges = 2; player.squashX = 1.2; player.squashY = 0.8;
+          break;  // bullet is not consumed
+        }
+      }
+    }
+
+    // Finish orb hit
+    if (finishOrb && finishOrb.active && rectsOverlap(hitBox, orbToBox(finishOrb))) {
+      if (tryAdvanceLevel()) return;
+    }
+
+    // Spike bounce
+    if (!player.hitSpikeBounceDone && player.hitDir === 'down') {
+      for (const sp of spikeList) {
+        if (rectsOverlap(hitBox, sp)) {
+          player.vy = CONFIG.DOT_BOUNCE; player.jumping = false; player.airCharges = 1;
+          player.squashX = 1.2; player.squashY = 0.8; player.hitSpikeBounceDone = true; break;
+        }
+      }
+    }
+
     player.hitActiveTimer--;
   }
 
-  for(const orb of orbObjects){if(!orb.active&&orb.respawns){orb.respawnTimer--;if(orb.respawnTimer<=0)orb.active=true;}}
-  resolveCollisions();resolveTriangleCollisions();updateEnemies();updateProjectiles();
+  // Orb respawn
+  for (const orb of orbObjects) {
+    if (!orb.active && orb.respawns) { orb.respawnTimer--; if (orb.respawnTimer <= 0) orb.active = true; }
+  }
+
+  // Physics + AI
+  resolveCollisions();
+  resolveTriangleCollisions();
+  updateEnemies();
+  updateProjectiles();
+
+  // Bullet orb body touch (Bullet1/2/3 activate on touch)
+  for (let oi = 0; oi < orbObjects.length; oi++) {
+    const orb = orbObjects[oi];
+    if (!orb.active) continue;
+    if (orb.type !== 'Bullet1' && orb.type !== 'Bullet2' && orb.type !== 'Bullet3') continue;
+    if (rectsOverlap(player, orbToBox(orb))) {
+      orb.active = false; orb.respawnTimer = orb.respawnTime;
+      orbsActivated.add(oi);
+      applyOrbEffect(orb, false);
+    }
+  }
+
   // Checkpoint body touch
-  for(const cp of checkpointObjects){if(!cp.cleared&&rectsOverlap(player,orbToBox(cp)))cp.cleared=true;}
-  if(finishOrb&&finishOrb.active&&rectsOverlap(player,orbToBox(finishOrb))){if(tryAdvanceLevel())return;}
-  for(const sp of spikeList){if(player.invTimer<=0&&rectsOverlap(player,sp)){takeDamage(1);break;}}
-  if(player.y>levelH+60)takeDamage(CONFIG.FALL_DAMAGE);
-  if(player.ghostTimer>0){if(!isInsideGhostable()){player.safeX=player.x;player.safeY=player.y;}player.ghostTimer--;if(player.ghostTimer<=0&&isInsideGhostable()){player.x=player.safeX;player.y=player.safeY;player.vx=0;player.vy=0;player.dashTimer=0;}}else{player.safeX=player.x;player.safeY=player.y;}
-  player.squashX+=(1-player.squashX)*0.25;player.squashY+=(1-player.squashY)*0.25;if(player.landTimer>0)player.landTimer--;
-  for(let i=player.dashTrails.length-1;i>=0;i--){player.dashTrails[i].alpha-=0.08;if(player.dashTrails[i].alpha<=0)player.dashTrails.splice(i,1);}
-  jumpPressedThisFrame=false;jumpReleasedThisFrame=false;dashPressedThisFrame=false;hitPressedThisFrame=false;shootPressedThisFrame=false;
+  for (const cp of checkpointObjects) {
+    if (!cp.cleared && rectsOverlap(player, orbToBox(cp))) cp.cleared = true;
+  }
+
+  // Finish orb body touch
+  if (finishOrb && finishOrb.active && rectsOverlap(player, orbToBox(finishOrb))) {
+    if (tryAdvanceLevel()) return;
+  }
+
+  // Spike body contact
+  for (const sp of spikeList) {
+    if (player.invTimer <= 0 && rectsOverlap(player, sp)) { takeDamage(1); break; }
+  }
+
+  // Fall off bottom
+  if (player.y > levelH + 60) takeDamage(CONFIG.FALL_DAMAGE);
+
+  // Ghosting logic
+  if (player.ghostTimer > 0) {
+    if (!isInsideGhostable()) { player.safeX = player.x; player.safeY = player.y; }
+    player.ghostTimer--;
+    if (player.ghostTimer <= 0 && isInsideGhostable()) {
+      player.x = player.safeX; player.y = player.safeY;
+      player.vx = 0; player.vy = 0; player.dashTimer = 0;
+    }
+  } else {
+    player.safeX = player.x; player.safeY = player.y;
+  }
+
+  // Visual decay
+  player.squashX += (1 - player.squashX) * 0.25;
+  player.squashY += (1 - player.squashY) * 0.25;
+  if (player.landTimer > 0) player.landTimer--;
+  for (let i = player.dashTrails.length - 1; i >= 0; i--) {
+    player.dashTrails[i].alpha -= 0.08;
+    if (player.dashTrails[i].alpha <= 0) player.dashTrails.splice(i, 1);
+  }
+
+  // Clear per-frame input flags
+  jumpPressedThisFrame = false; jumpReleasedThisFrame = false;
+  dashPressedThisFrame = false; hitPressedThisFrame = false;
+  shootPressedThisFrame = false;
 }
 
-// ============================================================
-//  RENDER (camera.y applied to all world-space y)
-// ============================================================
-function drawBackground(){ctx.fillStyle=CONFIG.BG_COLOR;ctx.fillRect(0,0,CONFIG.VIEW_W,CONFIG.VIEW_H);if(timeScale<1){ctx.fillStyle='rgba(80,40,120,0.06)';ctx.fillRect(0,0,CONFIG.VIEW_W,CONFIG.VIEW_H);}ctx.strokeStyle=CONFIG.GRID_COLOR;ctx.lineWidth=1;const gs=40;const sX=Math.floor(camera.x/gs)*gs;for(let gx=sX;gx<camera.x+CONFIG.VIEW_W;gx+=gs){const sx=gx-camera.x;ctx.beginPath();ctx.moveTo(sx,0);ctx.lineTo(sx,CONFIG.VIEW_H);ctx.stroke();}const sY=Math.floor(camera.y/gs)*gs;for(let gy=sY;gy<camera.y+CONFIG.VIEW_H;gy+=gs){const sy=gy-camera.y;ctx.beginPath();ctx.moveTo(0,sy);ctx.lineTo(CONFIG.VIEW_W,sy);ctx.stroke();}}
-function drawPlatforms(){const ghosting=player.ghostTimer>0,shimmerPhase=Date.now()*0.004;for(const plat of platforms){const sx=plat.x-camera.x,sy=plat.y-camera.y;if(sx+plat.w<0||sx>CONFIG.VIEW_W||sy+plat.h<0||sy>CONFIG.VIEW_H)continue;ctx.fillStyle=plat.isGround?CONFIG.GROUND_COLOR:CONFIG.PLATFORM_COLOR;ctx.fillRect(sx,sy,plat.w,plat.h);ctx.fillStyle=plat.isGround?CONFIG.GROUND_TOP:CONFIG.PLATFORM_TOP;ctx.fillRect(sx,sy,plat.w,plat.isGround?3:2);if(ghosting&&plat.ghostable){ctx.fillStyle='rgba(220,220,255,'+(0.08+0.06*Math.sin(shimmerPhase+plat.x*0.01))+')';ctx.fillRect(sx,sy,plat.w,plat.h);ctx.strokeStyle='rgba(220,220,255,'+(0.15+0.1*Math.sin(shimmerPhase*1.5))+')';ctx.lineWidth=1;ctx.strokeRect(sx+0.5,sy+0.5,plat.w-1,plat.h-1);}}}
-function drawFloorHoles(){for(const hole of floorHoleList){const sx=hole.x-camera.x,sy=hole.y-camera.y;if(sx+hole.w<0||sx>CONFIG.VIEW_W)continue;ctx.fillStyle='#050508';ctx.fillRect(sx,sy,hole.w,hole.h);ctx.strokeStyle='rgba(200,50,50,0.3)';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(sx,sy);ctx.lineTo(sx,sy+hole.h);ctx.moveTo(sx+hole.w,sy);ctx.lineTo(sx+hole.w,sy+hole.h);ctx.stroke();}}
-function drawSpikes(){const triH=CONFIG.SPIKE_TRIANGLE_H,triW=14;for(const sp of spikeList){const sx=sp.x-camera.x,sy=sp.y-camera.y;if(sx+sp.w<0||sx>CONFIG.VIEW_W)continue;const baseY=sy+sp.h;const count=Math.floor(sp.w/triW),startX=sx+(sp.w-count*triW)/2;ctx.fillStyle=CONFIG.SPIKE_COLOR;ctx.strokeStyle=CONFIG.SPIKE_OUTLINE;ctx.lineWidth=1;for(let i=0;i<count;i++){const tx=startX+i*triW;ctx.beginPath();ctx.moveTo(tx,baseY);ctx.lineTo(tx+triW/2,baseY-triH);ctx.lineTo(tx+triW,baseY);ctx.closePath();ctx.fill();ctx.stroke();}}}
-function drawTriangleBlocks(){for(const tri of triangleBlockList){const sx=tri.x-camera.x,sy=tri.y-camera.y;if(sx+tri.w<0||sx>CONFIG.VIEW_W||sy+tri.h<0||sy>CONFIG.VIEW_H)continue;ctx.fillStyle=CONFIG.TRIANGLE_COLOR;ctx.strokeStyle=CONFIG.TRIANGLE_OUTLINE;ctx.lineWidth=1.5;ctx.beginPath();if(tri.facing==='left'){ctx.moveTo(sx,sy+tri.h);ctx.lineTo(sx+tri.w,sy+tri.h);ctx.lineTo(sx+tri.w,sy);}else{ctx.moveTo(sx,sy+tri.h);ctx.lineTo(sx+tri.w,sy+tri.h);ctx.lineTo(sx,sy);}ctx.closePath();ctx.fill();ctx.stroke();}}
-function drawDashTrails(){for(const trail of player.dashTrails){ctx.fillStyle='rgba(232,83,63,'+trail.alpha*0.4+')';ctx.fillRect(trail.x-camera.x,trail.y-camera.y,player.w,player.h);}}
-function drawHitBox(){if(player.hitActiveTimer<=0)return;const hb=computeHitBox(player.hitDir),progress=player.hitActiveTimer/CONFIG.HIT_ACTIVE_FRAMES,sx=hb.x-camera.x,sy=hb.y-camera.y;ctx.globalAlpha=progress;ctx.fillStyle=CONFIG.HIT_COLOR;ctx.fillRect(sx,sy,hb.w,hb.h);ctx.fillStyle=CONFIG.HIT_COLOR_FADE;const ex=4*progress;ctx.fillRect(sx-ex,sy-ex,hb.w+ex*2,hb.h+ex*2);ctx.globalAlpha=1;}
-function drawProjectiles(){ctx.strokeStyle='#fff';ctx.lineWidth=2;for(const p of projectileList){const sx=p.x-camera.x,sy=p.y-camera.y,len=10;ctx.beginPath();ctx.moveTo(sx-p.dx/CONFIG.SHOT_SPEED*len,sy-p.dy/CONFIG.SHOT_SPEED*len);ctx.lineTo(sx,sy);ctx.stroke();}}
-function drawPlayer(){const cx=player.x+player.w/2-camera.x,cy=player.y+player.h/2-camera.y;ctx.save();ctx.translate(cx,cy);ctx.scale(player.squashX,player.squashY);if(player.invTimer>0&&Math.floor(player.invTimer/4)%2===0)ctx.globalAlpha=0.3;if(player.ghostTimer>0){const fr=player.ghostTimer<30?4:0;if(fr>0&&Math.floor(player.ghostTimer/fr)%2===0)ctx.globalAlpha=0.35;else ctx.globalAlpha=Math.min(ctx.globalAlpha||1,0.6);}ctx.fillStyle='rgba(0,0,0,0.3)';ctx.fillRect(-player.w/2+2,-player.h/2+2,player.w,player.h);ctx.fillStyle=CONFIG.PLAYER_COLOR;ctx.fillRect(-player.w/2,-player.h/2,player.w,player.h);ctx.strokeStyle=CONFIG.PLAYER_OUTLINE;ctx.lineWidth=1.5;ctx.strokeRect(-player.w/2,-player.h/2,player.w,player.h);if(player.ghostTimer>0){ctx.fillStyle='rgba(200,200,255,0.15)';ctx.fillRect(-player.w/2,-player.h/2,player.w,player.h);}const eyeY=-player.h/2+10,eyeSpacing=5,eyeOffsetX=player.facingRight?2:-2;ctx.fillStyle='#fff';ctx.fillRect(-eyeSpacing+eyeOffsetX-2,eyeY-2,4,5);ctx.fillRect(eyeSpacing+eyeOffsetX-2,eyeY-2,4,5);const pupilShift=player.facingRight?1:-1;ctx.fillStyle='#1a1a2e';ctx.fillRect(-eyeSpacing+eyeOffsetX-1+pupilShift,eyeY-1,2,3);ctx.fillRect(eyeSpacing+eyeOffsetX-1+pupilShift,eyeY-1,2,3);ctx.globalAlpha=1;ctx.restore();}
-function drawEnemies(){for(const enemy of enemyList){if(!enemy.active)continue;const sx=enemy.x-camera.x,sy=enemy.y-camera.y;if(sx+enemy.w<0||sx>CONFIG.VIEW_W)continue;ctx.fillStyle='rgba(0,0,0,0.25)';ctx.fillRect(sx+2,sy+2,enemy.w,enemy.h);ctx.fillStyle=CONFIG.ENEMY_COLOR;ctx.fillRect(sx,sy,enemy.w,enemy.h);ctx.strokeStyle=CONFIG.ENEMY_OUTLINE;ctx.lineWidth=1;ctx.strokeRect(sx,sy,enemy.w,enemy.h);const ecx=sx+enemy.w/2,ecy=sy+10;ctx.fillStyle='#cc4444';ctx.fillRect(ecx-5+enemy.dir,ecy-1,3,3);ctx.fillRect(ecx+3+enemy.dir,ecy-1,3,3);const barW=enemy.w+8,barH=3,barX=sx-4,barY=sy-8,hpRatio=enemy.hp/CONFIG.ENEMY_MAX_HP;ctx.fillStyle='#111';ctx.fillRect(barX,barY,barW,barH);ctx.fillStyle=enemy.hp===3?'#44aa55':enemy.hp===2?'#ccaa33':'#cc3333';ctx.fillRect(barX,barY,barW*hpRatio,barH);}}
-function drawOrbs(){const orbSize=CONFIG.ORB_RADIUS*2,halfSize=CONFIG.ORB_RADIUS;for(const orb of orbObjects){if(!orb.active)continue;const sx=orb.x-camera.x,sy=orb.y-camera.y;if(sx+halfSize+4<0||sx-halfSize-4>CONFIG.VIEW_W)continue;const img=orbImages[orb.type];if(img&&img.complete&&img.naturalWidth>0){ctx.drawImage(img,sx-halfSize,sy-halfSize,orbSize,orbSize);}else{ctx.save();ctx.beginPath();ctx.arc(sx,sy,halfSize,0,Math.PI*2);ctx.fillStyle='#555';ctx.fill();ctx.strokeStyle='#888';ctx.lineWidth=1.5;ctx.stroke();ctx.restore();}}}
-function drawCheckpoints(){const orbSize=CONFIG.ORB_RADIUS*2,halfSize=CONFIG.ORB_RADIUS;for(const cp of checkpointObjects){const sx=cp.x-camera.x,sy=cp.y-camera.y;if(sx+halfSize+4<0||sx-halfSize-4>CONFIG.VIEW_W)continue;ctx.save();if(checkpointImg.complete&&checkpointImg.naturalWidth>0){if(cp.cleared)ctx.globalAlpha=0.5;ctx.drawImage(checkpointImg,sx-halfSize,sy-halfSize,orbSize,orbSize);if(cp.cleared){ctx.globalAlpha=1;ctx.beginPath();ctx.arc(sx,sy,halfSize,0,Math.PI*2);ctx.fillStyle='rgba(50,200,80,0.3)';ctx.fill();ctx.strokeStyle='#44dd66';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(sx-5,sy);ctx.lineTo(sx-1,sy+5);ctx.lineTo(sx+7,sy-5);ctx.stroke();}}else{ctx.beginPath();ctx.arc(sx,sy,halfSize,0,Math.PI*2);ctx.fillStyle=cp.cleared?'#44dd66':'#ddaa22';ctx.fill();ctx.strokeStyle=cp.cleared?'#66ff88':'#ffcc44';ctx.lineWidth=1.5;ctx.stroke();}ctx.restore();}}
-function drawFinishOrb(){if(!finishOrb||!finishOrb.active)return;const sx=finishOrb.x-camera.x,sy=finishOrb.y-camera.y;if(sx+finishOrb.radius+6<0||sx-finishOrb.radius-6>CONFIG.VIEW_W)return;const ready=canFinish(),pulse=1+0.15*Math.sin(Date.now()*0.005);ctx.save();if(!ready)ctx.globalAlpha=0.35;ctx.beginPath();ctx.arc(sx,sy,(finishOrb.radius+6)*pulse,0,Math.PI*2);ctx.fillStyle=ready?'rgba(50,200,80,0.15)':'rgba(100,100,100,0.1)';ctx.fill();ctx.beginPath();ctx.arc(sx,sy,finishOrb.radius*pulse,0,Math.PI*2);ctx.fillStyle=ready?'#2a8844':'#444';ctx.fill();ctx.strokeStyle=ready?'#44dd66':'#666';ctx.lineWidth=2;ctx.stroke();ctx.restore();}
 
-function drawHUD(){
-  const hudX=36,hudY=24;
-  for(let i=0;i<levelMaxHP;i++){const hx=hudX+i*38,hy=hudY;ctx.fillStyle=i<player.hp?CONFIG.HEART_FULL:CONFIG.HEART_EMPTY;ctx.beginPath();const s=12;ctx.moveTo(hx,hy+s*0.3);ctx.bezierCurveTo(hx,hy-s*0.3,hx-s,hy-s*0.3,hx-s,hy+s*0.3);ctx.bezierCurveTo(hx-s,hy+s*0.8,hx,hy+s*1.2,hx,hy+s*1.5);ctx.bezierCurveTo(hx,hy+s*1.2,hx+s,hy+s*0.8,hx+s,hy+s*0.3);ctx.bezierCurveTo(hx+s,hy-s*0.3,hx,hy-s*0.3,hx,hy+s*0.3);ctx.fill();}
-  let nextY=hudY+28;
-  if(shootingUnlocked()){const shotY=nextY;ctx.fillStyle='rgba(255,255,255,0.3)';ctx.font='12px Courier New';ctx.textAlign='left';ctx.fillText('SHOTS',hudX-4,shotY+4);for(let i=0;i<CONFIG.MAX_SHOTS;i++){const filled=i<player.shots;ctx.fillStyle=filled?'#ddd':'#333';ctx.fillRect(hudX+52+i*18,shotY-5,12,12);ctx.strokeStyle=filled?'#fff':'#444';ctx.lineWidth=1;ctx.strokeRect(hudX+52+i*18,shotY-5,12,12);}const refundY=shotY+12,refundW=30;ctx.fillStyle='#222';ctx.fillRect(hudX+52,refundY,refundW,3);const rp=player.shotKills/CONFIG.KILLS_PER_REFUND;ctx.fillStyle='#aaa';ctx.fillRect(hudX+52,refundY,refundW*rp,3);ctx.fillStyle='#444';ctx.fillRect(hudX+52+refundW/2-0.5,refundY,1,3);nextY=shotY+24;}
-  const airY=nextY;ctx.fillStyle='rgba(255,255,255,0.3)';ctx.font='16px Courier New';ctx.textAlign='left';ctx.fillText('AIR',hudX-4,airY+6);ctx.fillStyle=player.airCharges>0?CONFIG.CHARGE_FULL:CONFIG.CHARGE_EMPTY;ctx.font='18px Courier New';ctx.fillText(''+player.airCharges,hudX+48,airY+7);
-  const barBaseY=airY+16;
-  if(player.hitCooldownTimer>0){const cdP=1-(player.hitCooldownTimer/CONFIG.HIT_COOLDOWN);ctx.fillStyle='#333344';ctx.fillRect(hudX,barBaseY,60,4);ctx.fillStyle=CONFIG.HIT_COLOR;ctx.fillRect(hudX,barBaseY,60*cdP,4);}
-  if(player.ghostTimer>0){const gP=player.ghostTimer/CONFIG.GHOST_DURATION;ctx.fillStyle='#333344';ctx.fillRect(hudX,barBaseY+8,80,5);ctx.fillStyle='#ccccff';ctx.fillRect(hudX,barBaseY+8,80*gP,5);ctx.fillStyle='rgba(200,200,255,0.4)';ctx.font='12px Courier New';ctx.fillText('GHOST',hudX+85,barBaseY+13);}
-  if(timeScale<1){const sP=slowRealTimeTotal>0?slowRealTimeLeft/slowRealTimeTotal:0;ctx.fillStyle='#333344';ctx.fillRect(hudX,barBaseY+18,80,5);ctx.fillStyle='#8844bb';ctx.fillRect(hudX,barBaseY+18,80*sP,5);ctx.fillStyle='rgba(140,70,200,0.5)';ctx.font='12px Courier New';ctx.fillText('SLOW',hudX+85,barBaseY+23);}
-  ctx.fillStyle='rgba(255,255,255,0.25)';ctx.font='12px Courier New';ctx.textAlign='right';ctx.fillText('LEVEL '+(currentLevel+1),CONFIG.VIEW_W-20,22);ctx.textAlign='left';
-  if(checkpointObjects.length>0){const cleared=checkpointObjects.filter(cp=>cp.cleared).length,total=checkpointObjects.length;ctx.fillStyle=cleared===total?'rgba(68,221,102,0.5)':'rgba(255,255,255,0.25)';ctx.font='12px Courier New';ctx.textAlign='right';ctx.fillText('CP '+cleared+'/'+total,CONFIG.VIEW_W-20,38);ctx.textAlign='left';}
+// ╔══════════════════════════════════════════════════════════════╗
+// ║  RENDER FUNCTIONS                                           ║
+// ║  All world-space y values are offset by camera.y            ║
+// ╚══════════════════════════════════════════════════════════════╝
+
+function drawBackground() {
+  ctx.fillStyle = CONFIG.BG_COLOR;
+  ctx.fillRect(0, 0, CONFIG.VIEW_W, CONFIG.VIEW_H);
+  if (timeScale < 1) { ctx.fillStyle = 'rgba(80,40,120,0.06)'; ctx.fillRect(0, 0, CONFIG.VIEW_W, CONFIG.VIEW_H); }
+  ctx.strokeStyle = CONFIG.GRID_COLOR; ctx.lineWidth = 1;
+  const gs = 40;
+  const sX = Math.floor(camera.x / gs) * gs;
+  for (let gx = sX; gx < camera.x + CONFIG.VIEW_W; gx += gs) {
+    const sx = gx - camera.x; ctx.beginPath(); ctx.moveTo(sx, 0); ctx.lineTo(sx, CONFIG.VIEW_H); ctx.stroke();
+  }
+  const sY = Math.floor(camera.y / gs) * gs;
+  for (let gy = sY; gy < camera.y + CONFIG.VIEW_H; gy += gs) {
+    const sy = gy - camera.y; ctx.beginPath(); ctx.moveTo(0, sy); ctx.lineTo(CONFIG.VIEW_W, sy); ctx.stroke();
+  }
 }
-function drawRestartButton(){const bx=CONFIG.RESTART_BTN_X,by=CONFIG.RESTART_BTN_Y,bw=CONFIG.RESTART_BTN_W,bh=CONFIG.RESTART_BTN_H;const hover=isOverRestartBtn()&&(gameState==='playing'||gameState==='transition');ctx.fillStyle=hover?'rgba(255,255,255,0.1)':'rgba(255,255,255,0.04)';ctx.fillRect(bx,by,bw,bh);ctx.strokeStyle=hover?'rgba(255,255,255,0.3)':'rgba(255,255,255,0.1)';ctx.lineWidth=1;ctx.strokeRect(bx,by,bw,bh);ctx.fillStyle=hover?'rgba(255,255,255,0.6)':'rgba(255,255,255,0.25)';ctx.font='11px Courier New';ctx.textAlign='center';ctx.fillText('RESTART',bx+bw/2,by+bh/2+4);ctx.textAlign='left';}
-function drawStartScreen(){ctx.fillStyle='rgba(10,10,15,0.7)';ctx.fillRect(0,0,CONFIG.VIEW_W,CONFIG.VIEW_H);ctx.fillStyle='#fff';ctx.font='600 28px Courier New';ctx.textAlign='center';ctx.fillText('LEVEL '+(currentLevel+1),CONFIG.VIEW_W/2,CONFIG.VIEW_H/2-30);const pulse=0.5+0.3*Math.sin(Date.now()*0.004);ctx.fillStyle='rgba(200,200,210,'+pulse+')';ctx.font='16px Courier New';ctx.fillText('Click to start',CONFIG.VIEW_W/2,CONFIG.VIEW_H/2+20);ctx.fillStyle='rgba(255,255,255,0.25)';ctx.font='14px Courier New';ctx.fillText('ARROWS - Move  ',CONFIG.VIEW_W/2,CONFIG.VIEW_H/2+60);ctx.fillText(' SPACE - Jump  ',CONFIG.VIEW_W/2,CONFIG.VIEW_H/2+80);ctx.fillText('     W - Dash  ',CONFIG.VIEW_W/2,CONFIG.VIEW_H/2+100);ctx.fillText('     R - Hit   ',CONFIG.VIEW_W/2,CONFIG.VIEW_H/2+120);if(shootingUnlocked())ctx.fillText('     E - Shoot ',CONFIG.VIEW_W/2,CONFIG.VIEW_H/2+140);ctx.textAlign='left';}
-function drawTransitionBanner(){const fadeStart=30,alpha=transitionTimer>fadeStart?1:transitionTimer/fadeStart;ctx.fillStyle='rgba(10,10,15,'+0.5*alpha+')';ctx.fillRect(0,0,CONFIG.VIEW_W,CONFIG.VIEW_H);ctx.globalAlpha=alpha;ctx.fillStyle='#fff';ctx.font='600 32px Courier New';ctx.textAlign='center';ctx.fillText('LEVEL '+(currentLevel+1),CONFIG.VIEW_W/2,CONFIG.VIEW_H/2-10);ctx.globalAlpha=1;ctx.textAlign='left';}
 
-function render(){updateCamera();drawBackground();drawFloorHoles();drawPlatforms();drawSpikes();drawTriangleBlocks();drawOrbs();drawCheckpoints();drawFinishOrb();drawEnemies();drawProjectiles();drawDashTrails();drawHitBox();drawPlayer();drawHUD();drawRestartButton();if(gameState==='start')drawStartScreen();else if(gameState==='transition')drawTransitionBanner();}
+function drawPlatforms() {
+  const ghosting = player.ghostTimer > 0;
+  const shimmerPhase = Date.now() * 0.004;
+  for (const plat of platforms) {
+    const sx = plat.x - camera.x, sy = plat.y - camera.y;
+    if (sx + plat.w < 0 || sx > CONFIG.VIEW_W || sy + plat.h < 0 || sy > CONFIG.VIEW_H) continue;
 
-let lastTime=0,accumulator=0;
-function gameLoop(timestamp){if(lastTime===0)lastTime=timestamp;let delta=timestamp-lastTime;lastTime=timestamp;if(delta>200)delta=CONFIG.FIXED_DT;if(slowRealTimeLeft>0){slowRealTimeLeft-=delta;if(slowRealTimeLeft<=0){slowRealTimeLeft=0;timeScale=1.0;}}accumulator+=delta*timeScale;while(accumulator>=CONFIG.FIXED_DT){update();accumulator-=CONFIG.FIXED_DT;}render();requestAnimationFrame(gameLoop);}
-loadLevel(0);requestAnimationFrame(gameLoop);
+    // Body
+    ctx.fillStyle = plat.isGround ? CONFIG.GROUND_COLOR : CONFIG.PLATFORM_COLOR;
+    ctx.fillRect(sx, sy, plat.w, plat.h);
+
+    // Top edge — dark purple for grounded platforms, otherwise standard
+    if (plat.grounded) {
+      ctx.fillStyle = CONFIG.GROUNDED_TOP;
+    } else {
+      ctx.fillStyle = plat.isGround ? CONFIG.GROUND_TOP : CONFIG.PLATFORM_TOP;
+    }
+    ctx.fillRect(sx, sy, plat.w, plat.isGround ? 3 : 2);
+
+    // Ghost shimmer
+    if (ghosting && plat.ghostable) {
+      ctx.fillStyle = 'rgba(220,220,255,' + (0.08 + 0.06 * Math.sin(shimmerPhase + plat.x * 0.01)) + ')';
+      ctx.fillRect(sx, sy, plat.w, plat.h);
+      ctx.strokeStyle = 'rgba(220,220,255,' + (0.15 + 0.1 * Math.sin(shimmerPhase * 1.5)) + ')';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(sx + 0.5, sy + 0.5, plat.w - 1, plat.h - 1);
+    }
+  }
+}
+
+function drawFloorHoles() {
+  for (const hole of floorHoleList) {
+    const sx = hole.x - camera.x, sy = hole.y - camera.y;
+    if (sx + hole.w < 0 || sx > CONFIG.VIEW_W) continue;
+    ctx.fillStyle = '#050508'; ctx.fillRect(sx, sy, hole.w, hole.h);
+    ctx.strokeStyle = 'rgba(200,50,50,0.3)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(sx, sy + hole.h);
+    ctx.moveTo(sx + hole.w, sy); ctx.lineTo(sx + hole.w, sy + hole.h); ctx.stroke();
+  }
+}
+
+function drawSpikes() {
+  const triH = CONFIG.SPIKE_TRIANGLE_H, triW = 14;
+  for (const sp of spikeList) {
+    const sx = sp.x - camera.x, sy = sp.y - camera.y;
+    if (sx + sp.w < 0 || sx > CONFIG.VIEW_W) continue;
+    const baseY = sy + sp.h;
+    const count = Math.floor(sp.w / triW);
+    const startX = sx + (sp.w - count * triW) / 2;
+    ctx.fillStyle = CONFIG.SPIKE_COLOR; ctx.strokeStyle = CONFIG.SPIKE_OUTLINE; ctx.lineWidth = 1;
+    for (let i = 0; i < count; i++) {
+      const tx = startX + i * triW;
+      ctx.beginPath(); ctx.moveTo(tx, baseY); ctx.lineTo(tx + triW / 2, baseY - triH); ctx.lineTo(tx + triW, baseY);
+      ctx.closePath(); ctx.fill(); ctx.stroke();
+    }
+  }
+}
+
+function drawTriangleBlocks() {
+  for (const tri of triangleBlockList) {
+    const sx = tri.x - camera.x, sy = tri.y - camera.y;
+    if (sx + tri.w < 0 || sx > CONFIG.VIEW_W || sy + tri.h < 0 || sy > CONFIG.VIEW_H) continue;
+    ctx.fillStyle = CONFIG.TRIANGLE_COLOR; ctx.strokeStyle = CONFIG.TRIANGLE_OUTLINE; ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    if (tri.facing === 'left') { ctx.moveTo(sx, sy + tri.h); ctx.lineTo(sx + tri.w, sy + tri.h); ctx.lineTo(sx + tri.w, sy); }
+    else { ctx.moveTo(sx, sy + tri.h); ctx.lineTo(sx + tri.w, sy + tri.h); ctx.lineTo(sx, sy); }
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+  }
+}
+
+function drawDashTrails() {
+  for (const trail of player.dashTrails) {
+    ctx.fillStyle = 'rgba(232,83,63,' + trail.alpha * 0.4 + ')';
+    ctx.fillRect(trail.x - camera.x, trail.y - camera.y, player.w, player.h);
+  }
+}
+
+function drawHitBox() {
+  if (player.hitActiveTimer <= 0) return;
+  const hb = computeHitBox(player.hitDir);
+  const progress = player.hitActiveTimer / CONFIG.HIT_ACTIVE_FRAMES;
+  const sx = hb.x - camera.x, sy = hb.y - camera.y;
+  ctx.globalAlpha = progress; ctx.fillStyle = CONFIG.HIT_COLOR; ctx.fillRect(sx, sy, hb.w, hb.h);
+  ctx.fillStyle = CONFIG.HIT_COLOR_FADE;
+  const ex = 4 * progress; ctx.fillRect(sx - ex, sy - ex, hb.w + ex * 2, hb.h + ex * 2);
+  ctx.globalAlpha = 1;
+}
+
+function drawProjectiles() {
+  for (const p of projectileList) {
+    const sx = p.x - camera.x, sy = p.y - camera.y;
+    const isHoriz = (p.dy === 0);
+    const bw = isHoriz ? CONFIG.BULLET_W : CONFIG.BULLET_H;
+    const bh = isHoriz ? CONFIG.BULLET_H : CONFIG.BULLET_W;
+
+    if (bulletImg.complete && bulletImg.naturalWidth > 0) {
+      ctx.drawImage(bulletImg, sx - bw / 2, sy - bh / 2, bw, bh);
+    } else {
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(sx - bw / 2, sy - bh / 2, bw, bh);
+    }
+  }
+}
+
+function drawPlayer() {
+  const cx = player.x + player.w / 2 - camera.x;
+  const cy = player.y + player.h / 2 - camera.y;
+  ctx.save(); ctx.translate(cx, cy); ctx.scale(player.squashX, player.squashY);
+  if (player.invTimer > 0 && Math.floor(player.invTimer / 4) % 2 === 0) ctx.globalAlpha = 0.3;
+  if (player.ghostTimer > 0) {
+    const fr = player.ghostTimer < 30 ? 4 : 0;
+    if (fr > 0 && Math.floor(player.ghostTimer / fr) % 2 === 0) ctx.globalAlpha = 0.35;
+    else ctx.globalAlpha = Math.min(ctx.globalAlpha || 1, 0.6);
+  }
+  ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(-player.w / 2 + 2, -player.h / 2 + 2, player.w, player.h);
+  ctx.fillStyle = CONFIG.PLAYER_COLOR; ctx.fillRect(-player.w / 2, -player.h / 2, player.w, player.h);
+  ctx.strokeStyle = CONFIG.PLAYER_OUTLINE; ctx.lineWidth = 1.5;
+  ctx.strokeRect(-player.w / 2, -player.h / 2, player.w, player.h);
+  if (player.ghostTimer > 0) { ctx.fillStyle = 'rgba(200,200,255,0.15)'; ctx.fillRect(-player.w / 2, -player.h / 2, player.w, player.h); }
+  // Eyes
+  const eyeY = -player.h / 2 + 10, eyeSpacing = 5, eyeOffsetX = player.facingRight ? 2 : -2;
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(-eyeSpacing + eyeOffsetX - 2, eyeY - 2, 4, 5);
+  ctx.fillRect( eyeSpacing + eyeOffsetX - 2, eyeY - 2, 4, 5);
+  const pupilShift = player.facingRight ? 1 : -1;
+  ctx.fillStyle = '#1a1a2e';
+  ctx.fillRect(-eyeSpacing + eyeOffsetX - 1 + pupilShift, eyeY - 1, 2, 3);
+  ctx.fillRect( eyeSpacing + eyeOffsetX - 1 + pupilShift, eyeY - 1, 2, 3);
+  ctx.globalAlpha = 1; ctx.restore();
+}
+
+function drawEnemies() {
+  for (const enemy of enemyList) {
+    if (!enemy.active) continue;
+    const sx = enemy.x - camera.x, sy = enemy.y - camera.y;
+    if (sx + enemy.w < 0 || sx > CONFIG.VIEW_W) continue;
+    ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(sx + 2, sy + 2, enemy.w, enemy.h);
+    ctx.fillStyle = CONFIG.ENEMY_COLOR; ctx.fillRect(sx, sy, enemy.w, enemy.h);
+    ctx.strokeStyle = CONFIG.ENEMY_OUTLINE; ctx.lineWidth = 1; ctx.strokeRect(sx, sy, enemy.w, enemy.h);
+    const ecx = sx + enemy.w / 2, ecy = sy + 10;
+    ctx.fillStyle = '#cc4444';
+    ctx.fillRect(ecx - 5 + enemy.dir, ecy - 1, 3, 3);
+    ctx.fillRect(ecx + 3 + enemy.dir, ecy - 1, 3, 3);
+    // Health bar
+    const barW = enemy.w + 8, barX = sx - 4, barY = sy - 8;
+    const hpRatio = enemy.hp / CONFIG.ENEMY_MAX_HP;
+    ctx.fillStyle = '#111'; ctx.fillRect(barX, barY, barW, 3);
+    ctx.fillStyle = enemy.hp === 3 ? '#44aa55' : enemy.hp === 2 ? '#ccaa33' : '#cc3333';
+    ctx.fillRect(barX, barY, barW * hpRatio, 3);
+  }
+}
+
+function drawOrbs() {
+  const orbSize = CONFIG.ORB_RADIUS * 2, halfSize = CONFIG.ORB_RADIUS;
+  for (const orb of orbObjects) {
+    if (!orb.active) continue;
+    const sx = orb.x - camera.x, sy = orb.y - camera.y;
+    if (sx + halfSize + 4 < 0 || sx - halfSize - 4 > CONFIG.VIEW_W) continue;
+    const img = orbImages[orb.type];
+    if (img && img.complete && img.naturalWidth > 0) {
+      ctx.drawImage(img, sx - halfSize, sy - halfSize, orbSize, orbSize);
+    } else {
+      ctx.save(); ctx.beginPath(); ctx.arc(sx, sy, halfSize, 0, Math.PI * 2);
+      ctx.fillStyle = '#555'; ctx.fill(); ctx.strokeStyle = '#888'; ctx.lineWidth = 1.5; ctx.stroke();
+      ctx.restore();
+    }
+  }
+}
+
+function drawCheckpoints() {
+  const orbSize = CONFIG.ORB_RADIUS * 2, halfSize = CONFIG.ORB_RADIUS;
+  for (const cp of checkpointObjects) {
+    const sx = cp.x - camera.x, sy = cp.y - camera.y;
+    if (sx + halfSize + 4 < 0 || sx - halfSize - 4 > CONFIG.VIEW_W) continue;
+    ctx.save();
+    if (checkpointImg.complete && checkpointImg.naturalWidth > 0) {
+      if (cp.cleared) ctx.globalAlpha = 0.5;
+      ctx.drawImage(checkpointImg, sx - halfSize, sy - halfSize, orbSize, orbSize);
+      if (cp.cleared) {
+        ctx.globalAlpha = 1;
+        ctx.beginPath(); ctx.arc(sx, sy, halfSize, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(50,200,80,0.3)'; ctx.fill();
+        ctx.strokeStyle = '#44dd66'; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.moveTo(sx - 5, sy); ctx.lineTo(sx - 1, sy + 5); ctx.lineTo(sx + 7, sy - 5); ctx.stroke();
+      }
+    } else {
+      ctx.beginPath(); ctx.arc(sx, sy, halfSize, 0, Math.PI * 2);
+      ctx.fillStyle = cp.cleared ? '#44dd66' : '#ddaa22'; ctx.fill();
+      ctx.strokeStyle = cp.cleared ? '#66ff88' : '#ffcc44'; ctx.lineWidth = 1.5; ctx.stroke();
+    }
+    ctx.restore();
+  }
+}
+
+function drawFinishOrb() {
+  if (!finishOrb || !finishOrb.active) return;
+  const sx = finishOrb.x - camera.x, sy = finishOrb.y - camera.y;
+  if (sx + finishOrb.radius + 6 < 0 || sx - finishOrb.radius - 6 > CONFIG.VIEW_W) return;
+  const ready = canFinish();
+  const pulse = 1 + 0.15 * Math.sin(Date.now() * 0.005);
+  ctx.save();
+  if (!ready) ctx.globalAlpha = 0.35;
+  ctx.beginPath(); ctx.arc(sx, sy, (finishOrb.radius + 6) * pulse, 0, Math.PI * 2);
+  ctx.fillStyle = ready ? 'rgba(50,200,80,0.15)' : 'rgba(100,100,100,0.1)'; ctx.fill();
+  ctx.beginPath(); ctx.arc(sx, sy, finishOrb.radius * pulse, 0, Math.PI * 2);
+  ctx.fillStyle = ready ? '#2a8844' : '#444'; ctx.fill();
+  ctx.strokeStyle = ready ? '#44dd66' : '#666'; ctx.lineWidth = 2; ctx.stroke();
+  ctx.restore();
+}
+
+
+// ╔══════════════════════════════════════════════════════════════╗
+// ║  HUD                                                        ║
+// ╚══════════════════════════════════════════════════════════════╝
+
+function drawHUD() {
+  const hudX = 36, hudY = 24;
+
+  // Hearts
+  for (let i = 0; i < levelMaxHP; i++) {
+    const hx = hudX + i * 38, hy = hudY;
+    ctx.fillStyle = i < player.hp ? CONFIG.HEART_FULL : CONFIG.HEART_EMPTY;
+    ctx.beginPath(); const s = 12;
+    ctx.moveTo(hx, hy + s * 0.3);
+    ctx.bezierCurveTo(hx, hy - s * 0.3, hx - s, hy - s * 0.3, hx - s, hy + s * 0.3);
+    ctx.bezierCurveTo(hx - s, hy + s * 0.8, hx, hy + s * 1.2, hx, hy + s * 1.5);
+    ctx.bezierCurveTo(hx, hy + s * 1.2, hx + s, hy + s * 0.8, hx + s, hy + s * 0.3);
+    ctx.bezierCurveTo(hx + s, hy - s * 0.3, hx, hy - s * 0.3, hx, hy + s * 0.3);
+    ctx.fill();
+  }
+
+  let nextY = hudY + 28;
+
+  // Shots (only if shooting unlocked) — show bullet.png for each shot
+  if (shootingUnlocked()) {
+    const shotY = nextY;
+    const iconW = 18, iconH = 10, gap = 4;
+    for (let i = 0; i < player.shots; i++) {
+      const ix = hudX + i * (iconW + gap);
+      if (bulletImg.complete && bulletImg.naturalWidth > 0) {
+        ctx.drawImage(bulletImg, ix, shotY - iconH / 2, iconW, iconH);
+      } else {
+        ctx.fillStyle = '#ddd';
+        ctx.fillRect(ix, shotY - iconH / 2, iconW, iconH);
+      }
+    }
+    // Kill refund bar (below bullet icons)
+    const refundY = shotY + iconH / 2 + 4, refundW = 30;
+    ctx.fillStyle = '#222'; ctx.fillRect(hudX, refundY, refundW, 3);
+    const rp = player.shotKills / CONFIG.KILLS_PER_REFUND;
+    ctx.fillStyle = '#aaa'; ctx.fillRect(hudX, refundY, refundW * rp, 3);
+    ctx.fillStyle = '#444'; ctx.fillRect(hudX + refundW / 2 - 0.5, refundY, 1, 3);
+    nextY = shotY + iconH / 2 + 14;
+  }
+
+  // AIR
+  const airY = nextY;
+  ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.font = '16px Courier New'; ctx.textAlign = 'left';
+  ctx.fillText('AIR', hudX - 4, airY + 6);
+  ctx.fillStyle = player.airCharges > 0 ? CONFIG.CHARGE_FULL : CONFIG.CHARGE_EMPTY;
+  ctx.font = '18px Courier New';
+  ctx.fillText('' + player.airCharges, hudX + 48, airY + 7);
+
+  // Cooldown bars
+  const barBaseY = airY + 16;
+  if (player.hitCooldownTimer > 0) {
+    const cdP = 1 - (player.hitCooldownTimer / CONFIG.HIT_COOLDOWN);
+    ctx.fillStyle = '#333344'; ctx.fillRect(hudX, barBaseY, 60, 4);
+    ctx.fillStyle = CONFIG.HIT_COLOR; ctx.fillRect(hudX, barBaseY, 60 * cdP, 4);
+  }
+  if (player.ghostTimer > 0) {
+    const gP = player.ghostTimer / CONFIG.GHOST_DURATION;
+    ctx.fillStyle = '#333344'; ctx.fillRect(hudX, barBaseY + 8, 80, 5);
+    ctx.fillStyle = '#ccccff'; ctx.fillRect(hudX, barBaseY + 8, 80 * gP, 5);
+    ctx.fillStyle = 'rgba(200,200,255,0.4)'; ctx.font = '12px Courier New'; ctx.fillText('GHOST', hudX + 85, barBaseY + 13);
+  }
+  if (timeScale < 1) {
+    const sP = slowRealTimeTotal > 0 ? slowRealTimeLeft / slowRealTimeTotal : 0;
+    ctx.fillStyle = '#333344'; ctx.fillRect(hudX, barBaseY + 18, 80, 5);
+    ctx.fillStyle = '#8844bb'; ctx.fillRect(hudX, barBaseY + 18, 80 * sP, 5);
+    ctx.fillStyle = 'rgba(140,70,200,0.5)'; ctx.font = '12px Courier New'; ctx.fillText('SLOW', hudX + 85, barBaseY + 23);
+  }
+
+  // Level indicator
+  ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.font = '12px Courier New'; ctx.textAlign = 'right';
+  ctx.fillText('LEVEL ' + (currentLevel + 1), CONFIG.VIEW_W - 20, 22); ctx.textAlign = 'left';
+
+  // Checkpoint counter
+  if (checkpointObjects.length > 0) {
+    const cleared = checkpointObjects.filter(cp => cp.cleared).length;
+    const total = checkpointObjects.length;
+    ctx.fillStyle = cleared === total ? 'rgba(68,221,102,0.5)' : 'rgba(255,255,255,0.25)';
+    ctx.font = '12px Courier New'; ctx.textAlign = 'right';
+    ctx.fillText('CP ' + cleared + '/' + total, CONFIG.VIEW_W - 20, 38); ctx.textAlign = 'left';
+  }
+}
+
+function drawRestartButton() {
+  const bx = CONFIG.RESTART_BTN_X, by = CONFIG.RESTART_BTN_Y, bw = CONFIG.RESTART_BTN_W, bh = CONFIG.RESTART_BTN_H;
+  const hover = isOverRestartBtn() && (gameState === 'playing' || gameState === 'transition');
+  ctx.fillStyle = hover ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.04)'; ctx.fillRect(bx, by, bw, bh);
+  ctx.strokeStyle = hover ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.1)'; ctx.lineWidth = 1; ctx.strokeRect(bx, by, bw, bh);
+  ctx.fillStyle = hover ? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,0.25)';
+  ctx.font = '11px Courier New'; ctx.textAlign = 'center'; ctx.fillText('RESTART', bx + bw / 2, by + bh / 2 + 4); ctx.textAlign = 'left';
+}
+
+function drawStartScreen() {
+  ctx.fillStyle = 'rgba(10,10,15,0.7)'; ctx.fillRect(0, 0, CONFIG.VIEW_W, CONFIG.VIEW_H);
+  ctx.fillStyle = '#fff'; ctx.font = '600 28px Courier New'; ctx.textAlign = 'center';
+  ctx.fillText('LEVEL ' + (currentLevel + 1), CONFIG.VIEW_W / 2, CONFIG.VIEW_H / 2 - 30);
+  const pulse = 0.5 + 0.3 * Math.sin(Date.now() * 0.004);
+  ctx.fillStyle = 'rgba(200,200,210,' + pulse + ')'; ctx.font = '16px Courier New';
+  ctx.fillText('Click to start', CONFIG.VIEW_W / 2, CONFIG.VIEW_H / 2 + 20);
+  ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.font = '14px Courier New';
+  ctx.fillText('ARROWS - Move  ', CONFIG.VIEW_W / 2, CONFIG.VIEW_H / 2 + 60);
+  ctx.fillText(' SPACE - Jump  ', CONFIG.VIEW_W / 2, CONFIG.VIEW_H / 2 + 80);
+  ctx.fillText('     W - Dash  ', CONFIG.VIEW_W / 2, CONFIG.VIEW_H / 2 + 100);
+  ctx.fillText('     R - Hit   ', CONFIG.VIEW_W / 2, CONFIG.VIEW_H / 2 + 120);
+  if (shootingUnlocked()) ctx.fillText('     E - Shoot ', CONFIG.VIEW_W / 2, CONFIG.VIEW_H / 2 + 140);
+  ctx.textAlign = 'left';
+}
+
+function drawTransitionBanner() {
+  const fadeStart = 30;
+  const alpha = transitionTimer > fadeStart ? 1 : transitionTimer / fadeStart;
+  ctx.fillStyle = 'rgba(10,10,15,' + 0.5 * alpha + ')'; ctx.fillRect(0, 0, CONFIG.VIEW_W, CONFIG.VIEW_H);
+  ctx.globalAlpha = alpha; ctx.fillStyle = '#fff'; ctx.font = '600 32px Courier New'; ctx.textAlign = 'center';
+  ctx.fillText('LEVEL ' + (currentLevel + 1), CONFIG.VIEW_W / 2, CONFIG.VIEW_H / 2 - 10);
+  ctx.globalAlpha = 1; ctx.textAlign = 'left';
+}
+
+
+// ╔══════════════════════════════════════════════════════════════╗
+// ║  RENDER COMPOSITING                                         ║
+// ╚══════════════════════════════════════════════════════════════╝
+
+function render() {
+  updateCamera();
+  drawBackground();
+  drawFloorHoles();
+  drawPlatforms();
+  drawSpikes();
+  drawTriangleBlocks();
+  drawOrbs();
+  drawCheckpoints();
+  drawFinishOrb();
+  drawEnemies();
+  drawProjectiles();
+  drawDashTrails();
+  drawHitBox();
+  drawPlayer();
+  drawHUD();
+  drawRestartButton();
+  if (gameState === 'start') drawStartScreen();
+  else if (gameState === 'transition') drawTransitionBanner();
+}
+
+
+// ╔══════════════════════════════════════════════════════════════╗
+// ║  GAME LOOP — timeScale slows the accumulator                ║
+// ╚══════════════════════════════════════════════════════════════╝
+
+let lastTime = 0;
+let accumulator = 0;
+
+function gameLoop(timestamp) {
+  if (lastTime === 0) lastTime = timestamp;
+  let delta = timestamp - lastTime;
+  lastTime = timestamp;
+  if (delta > 200) delta = CONFIG.FIXED_DT;
+
+  // Slow timer ticks in real time
+  if (slowRealTimeLeft > 0) {
+    slowRealTimeLeft -= delta;
+    if (slowRealTimeLeft <= 0) { slowRealTimeLeft = 0; timeScale = 1.0; }
+  }
+
+  accumulator += delta * timeScale;
+  while (accumulator >= CONFIG.FIXED_DT) {
+    update();
+    accumulator -= CONFIG.FIXED_DT;
+  }
+
+  render();
+  requestAnimationFrame(gameLoop);
+}
+
+loadLevel(0);
+requestAnimationFrame(gameLoop);
+
 </script>
 </body>
 </html>
