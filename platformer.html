@@ -1266,11 +1266,20 @@ function hasGroundAt(checkX, feetY) {
 function applyOrbEffect(orb, givesBounce) {
   const t = orb.type;
 
+  // Helper: when any orb launches the player upward, prevent the coyote timer
+  // or jump buffer from firing a stacked jump on the next frame.
+  function clearLaunchState() {
+    player.grounded = false;
+    player.coyoteTimer = 0;
+    player.jumpBufferTimer = 0;
+  }
+
   // Boost — vertical launch
   if (t === 'Boost1' || t === 'Boost2' || t === 'Boost3') {
     const h = { Boost1: 200, Boost2: 350, Boost3: 500 };
     player.vy = -Math.sqrt(2 * CONFIG.GRAVITY * h[t]);
     player.jumping = true;
+    clearLaunchState();
     player.squashX = 0.75; player.squashY = 1.3;
     return;
   }
@@ -1279,7 +1288,7 @@ function applyOrbEffect(orb, givesBounce) {
   if (t === 'SetAir1' || t === 'SetAir2' || t === 'SetAir3') {
     const v = { SetAir1: 1, SetAir2: 2, SetAir3: 3 };
     player.airCharges = v[t];
-    if (givesBounce) { player.vy = CONFIG.DOT_BOUNCE; player.jumping = false; player.squashX = 1.2; player.squashY = 0.8; }
+    if (givesBounce) { player.vy = CONFIG.DOT_BOUNCE; player.jumping = false; clearLaunchState(); player.squashX = 1.2; player.squashY = 0.8; }
     return;
   }
 
@@ -1287,7 +1296,7 @@ function applyOrbEffect(orb, givesBounce) {
   if (t === 'AddAir1' || t === 'AddAir2' || t === 'AddAir3') {
     const v = { AddAir1: 1, AddAir2: 2, AddAir3: 3 };
     player.airCharges += v[t];
-    if (givesBounce) { player.vy = CONFIG.DOT_BOUNCE; player.jumping = false; player.squashX = 1.2; player.squashY = 0.8; }
+    if (givesBounce) { player.vy = CONFIG.DOT_BOUNCE; player.jumping = false; clearLaunchState(); player.squashX = 1.2; player.squashY = 0.8; }
     return;
   }
 
@@ -1308,21 +1317,21 @@ function applyOrbEffect(orb, givesBounce) {
   // Ghosting
   if (t === 'Ghosting') {
     player.airCharges = 1;
-    if (givesBounce) { player.vy = CONFIG.DOT_BOUNCE; player.jumping = false; player.squashX = 1.2; player.squashY = 0.8; }
+    if (givesBounce) { player.vy = CONFIG.DOT_BOUNCE; player.jumping = false; clearLaunchState(); player.squashX = 1.2; player.squashY = 0.8; }
     player.ghostTimer = CONFIG.GHOST_DURATION;
     return;
   }
 
   // NoGhosting
   if (t === 'NoGhosting') {
-    if (givesBounce) { player.vy = CONFIG.DOT_BOUNCE; player.jumping = false; player.squashX = 1.2; player.squashY = 0.8; }
+    if (givesBounce) { player.vy = CONFIG.DOT_BOUNCE; player.jumping = false; clearLaunchState(); player.squashX = 1.2; player.squashY = 0.8; }
     player.ghostTimer = 0;
     return;
   }
 
   // SlowMo
   if (t === 'SlowMo') {
-    if (givesBounce) { player.vy = CONFIG.DOT_BOUNCE; player.jumping = false; player.squashX = 1.2; player.squashY = 0.8; }
+    if (givesBounce) { player.vy = CONFIG.DOT_BOUNCE; player.jumping = false; clearLaunchState(); player.squashX = 1.2; player.squashY = 0.8; }
     slowRealTimeLeft = orb.slowDuration || CONFIG.SLOW_DURATION_MS;
     slowRealTimeTotal = slowRealTimeLeft;
     timeScale = CONFIG.SLOW_SCALE;
@@ -1342,6 +1351,7 @@ function applyOrbEffect(orb, givesBounce) {
     player.y = orb.y - player.h / 2;
     player.vx = 0;
     player.vy = 0;
+    clearLaunchState();
     return;
   }
 }
@@ -1578,12 +1588,10 @@ function resolveTriangleCollisions() {
       if (player.vy > 0) player.vy = 0;
       player.grounded = true; player.jumping = false;
       player.onTriangle = true; player.triangleFacing = tri.facing;
-      // Slide force — strong acceleration for slippery feel
-      const hyp = Math.sqrt(tri.w * tri.w + tri.h * tri.h);
-      const slideAccel = CONFIG.GRAVITY * 5 * (tri.h / hyp);
-      const cosA = tri.w / hyp;
-      if (tri.facing === 'left') player.vx -= slideAccel * cosA;
-      else player.vx += slideAccel * cosA;
+      // Slide — fixed speed at 1.5x player move speed
+      const slideSpeed = CONFIG.MAX_MOVE_SPEED * 1.5;
+      if (tri.facing === 'left') player.vx = -slideSpeed;
+      else player.vx = slideSpeed;
     }
 
     // Vertical wall collision
@@ -1780,9 +1788,9 @@ function update() {
       if (player.vy > CONFIG.TERMINAL_VELOCITY) player.vy = CONFIG.TERMINAL_VELOCITY;
     }
   } else if (onTri && player.dashTimer <= 0) {
+    // On triangle: gravity only (collision resolver sets fixed slide speed)
     player.vy += CONFIG.GRAVITY;
     if (player.vy > CONFIG.TERMINAL_VELOCITY) player.vy = CONFIG.TERMINAL_VELOCITY;
-    player.vx *= 0.99;  // very low friction — slippery surface
   } else {
     player.vx *= CONFIG.MOVE_DECEL;
     if (Math.abs(player.vx) < 0.1) player.vx = 0;
@@ -1911,15 +1919,19 @@ function update() {
       if (player.hitEnemyIds) player.hitEnemyIds.add(i);
       if (player.hitDir === 'down') {
         player.vy = CONFIG.DOT_BOUNCE; player.jumping = false;
+        player.grounded = false; player.coyoteTimer = 0; player.jumpBufferTimer = 0;
         player.airCharges = 1; player.squashX = 1.2; player.squashY = 0.8;
       }
     }
 
-    // Bullet bounce — hitting a bullet from above bounces the player and sets air to 2
+    // Bullet bounce — hitting a HORIZONTAL bullet from above bounces the player and sets air to 2
+    // (vertical bullets excluded to prevent accidental self-bounce on own shots)
     if (player.hitDir === 'down') {
       for (const p of projectileList) {
+        if (p.dy !== 0) continue;  // skip vertical bullets
         if (rectsOverlap(hitBox, bulletBox(p))) {
           player.vy = CONFIG.DOT_BOUNCE; player.jumping = false;
+          player.grounded = false; player.coyoteTimer = 0; player.jumpBufferTimer = 0;
           player.airCharges = 2; player.squashX = 1.2; player.squashY = 0.8;
           break;  // bullet is not consumed
         }
@@ -1935,7 +1947,9 @@ function update() {
     if (!player.hitSpikeBounceDone && player.hitDir === 'down') {
       for (const sp of spikeList) {
         if (rectsOverlap(hitBox, sp)) {
-          player.vy = CONFIG.DOT_BOUNCE; player.jumping = false; player.airCharges = 1;
+          player.vy = CONFIG.DOT_BOUNCE; player.jumping = false;
+          player.grounded = false; player.coyoteTimer = 0; player.jumpBufferTimer = 0;
+          player.airCharges = 1;
           player.squashX = 1.2; player.squashY = 0.8; player.hitSpikeBounceDone = true; break;
         }
       }
@@ -2125,16 +2139,28 @@ function drawHitBox() {
 function drawProjectiles() {
   for (const p of projectileList) {
     const sx = p.x - camera.x, sy = p.y - camera.y;
-    const isHoriz = (p.dy === 0);
-    const bw = isHoriz ? CONFIG.BULLET_W : CONFIG.BULLET_H;
-    const bh = isHoriz ? CONFIG.BULLET_H : CONFIG.BULLET_W;
+
+    // Determine rotation angle based on travel direction
+    // bullet.png is designed pointing RIGHT (0°)
+    let angle = 0;
+    if (p.dx < 0 && p.dy === 0) angle = Math.PI;        // left → 180°
+    else if (p.dx === 0 && p.dy < 0) angle = -Math.PI / 2; // up → -90°
+    else if (p.dx === 0 && p.dy > 0) angle = Math.PI / 2;  // down → 90°
+    // dx > 0, dy === 0 → right → 0° (default)
+
+    ctx.save();
+    ctx.translate(sx, sy);
+    ctx.rotate(angle);
 
     if (bulletImg.complete && bulletImg.naturalWidth > 0) {
-      ctx.drawImage(bulletImg, sx - bw / 2, sy - bh / 2, bw, bh);
+      // Draw centered at origin (after translate+rotate)
+      ctx.drawImage(bulletImg, -CONFIG.BULLET_W / 2, -CONFIG.BULLET_H / 2, CONFIG.BULLET_W, CONFIG.BULLET_H);
     } else {
       ctx.fillStyle = '#fff';
-      ctx.fillRect(sx - bw / 2, sy - bh / 2, bw, bh);
+      ctx.fillRect(-CONFIG.BULLET_W / 2, -CONFIG.BULLET_H / 2, CONFIG.BULLET_W, CONFIG.BULLET_H);
     }
+
+    ctx.restore();
   }
 }
 
@@ -2251,8 +2277,10 @@ function drawFinishOrb() {
 
 function drawHUD() {
   const hudX = 36, hudY = 24;
+  const rowGap = 20;  // equidistant vertical spacing between status rows
 
-  // Hearts
+  // ── Row 1: Hearts ──
+  const heartH = 27;  // approximate visual height of heart shape
   for (let i = 0; i < levelMaxHP; i++) {
     const hx = hudX + i * 38, hy = hudY;
     ctx.fillStyle = i < player.hp ? CONFIG.HEART_FULL : CONFIG.HEART_EMPTY;
@@ -2265,39 +2293,36 @@ function drawHUD() {
     ctx.fill();
   }
 
-  let nextY = hudY + 28;
-
-  // Shots (only if shooting unlocked) — show bullet.png for each shot
+  // ── Row 2: Bullets (only if shooting unlocked) ──
+  const bulletsY = hudY + heartH + rowGap;
   if (shootingUnlocked()) {
-    const shotY = nextY;
     const iconW = 22, iconH = 9, gap = 4;
     for (let i = 0; i < player.shots; i++) {
       const ix = hudX + i * (iconW + gap);
       if (bulletImg.complete && bulletImg.naturalWidth > 0) {
-        ctx.drawImage(bulletImg, ix, shotY - iconH / 2, iconW, iconH);
+        ctx.drawImage(bulletImg, ix, bulletsY, iconW, iconH);
       } else {
         ctx.fillStyle = '#ddd';
-        ctx.fillRect(ix, shotY - iconH / 2, iconW, iconH);
+        ctx.fillRect(ix, bulletsY, iconW, iconH);
       }
     }
-    nextY = shotY + iconH / 2 + 6;
   }
 
-  // AIR — show AirCount.png for each air charge
-  const airY = nextY;
+  // ── Row 3: Air charges ──
+  const airY = bulletsY + 9 + rowGap;  // 9 = bullet icon height
   const airIconW = 20, airIconH = 10, airGap = 4;
   for (let i = 0; i < player.airCharges; i++) {
     const ix = hudX + i * (airIconW + airGap);
     if (airCountImg.complete && airCountImg.naturalWidth > 0) {
-      ctx.drawImage(airCountImg, ix, airY - airIconH / 2, airIconW, airIconH);
+      ctx.drawImage(airCountImg, ix, airY, airIconW, airIconH);
     } else {
       ctx.fillStyle = CONFIG.CHARGE_FULL;
-      ctx.fillRect(ix, airY - airIconH / 2, airIconW, airIconH);
+      ctx.fillRect(ix, airY, airIconW, airIconH);
     }
   }
 
-  // Cooldown bars
-  const barBaseY = airY + 16;
+  // ── Cooldown bars (below the three status rows) ──
+  const barBaseY = airY + airIconH + rowGap;
   if (player.hitCooldownTimer > 0) {
     const cdP = 1 - (player.hitCooldownTimer / CONFIG.HIT_COOLDOWN);
     ctx.fillStyle = '#333344'; ctx.fillRect(hudX, barBaseY, 60, 4);
