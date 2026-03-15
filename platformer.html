@@ -57,9 +57,9 @@ const CONFIG = {
   TERMINAL_VELOCITY: 12,
   FIXED_DT: 1000 / 60,
 
-  // --- Player size ---
-  PLAYER_W: 24,
-  PLAYER_H: 32,
+  // --- Player size (matches spritesheet frame: 30x21) ---
+  PLAYER_W: 30,
+  PLAYER_H: 21,
 
   // --- Movement ---
   MOVE_ACCEL: 1.6,
@@ -99,7 +99,9 @@ const CONFIG = {
   SPIKE_TRIANGLE_H: 16,
   GROUND_H: 40,
 
-  // --- Enemies ---
+  // --- Enemies (independent of player size) ---
+  ENEMY_W: 24,
+  ENEMY_H: 32,
   ENEMY_SPEED: 1.5,
   ENEMY_MAX_HP: 3,
   ENEMY_KNOCKBACK: 4,
@@ -154,7 +156,14 @@ const CONFIG = {
 // Derived constants
 const GROUND_Y       = CONFIG.VIEW_H - CONFIG.GROUND_H;
 const FLOOR_SPAWN_Y  = GROUND_Y - CONFIG.PLAYER_H;
+const ENEMY_FLOOR_Y  = GROUND_Y - CONFIG.ENEMY_H;  // for placing enemies on ground level
 const LEFT_SPAWN_X   = 30;
+
+// Spritesheet animation constants
+const SPRITE_FRAME_W = 30;   // width of one frame in the spritesheet
+const SPRITE_FRAME_H = 21;   // height of one frame in the spritesheet
+const SPRITE_FRAMES  = 8;    // total frames in walk cycle
+const ANIM_SPEED     = 5;    // game frames per animation frame
 
 
 // ╔══════════════════════════════════════════════════════════════╗
@@ -195,6 +204,10 @@ const bulletImg = loadOrbImg('bullet.png');
 
 // --- HUD: Air charge icon (23x11) ---
 const airCountImg = loadOrbImg('AirCount.png');
+
+// --- Player spritesheet (8 frames, each 30x21, frog faces LEFT by default) ---
+const playerSprite = new Image();
+playerSprite.src = '../assets/character/SpritesheetFrogWalk.png';
 
 
 // ╔══════════════════════════════════════════════════════════════╗
@@ -809,7 +822,7 @@ const LEVELS = [
       { x: 1800, y: 510, type: 'AddAir1' },
     ],
     enemies: [
-      { x: 550,  y: FLOOR_SPAWN_Y },
+      { x: 550,  y: ENEMY_FLOOR_Y },
       { x: 1450, y: 580 - 32 },
       { x: 2050, y: 500 - 32 },
       { x: 2650, y: 520 - 32 },
@@ -1075,7 +1088,7 @@ const LEVELS = [
     ],
 
     enemies: [
-      { x: 400,  y: FLOOR_SPAWN_Y },    // Section 1
+      { x: 400,  y: ENEMY_FLOOR_Y },    // Section 1
       { x: 5700, y: 580 - 32 },          // Section 8
       { x: 5950, y: 540 - 32 },          // Section 8
     ],
@@ -1237,6 +1250,9 @@ const player = {
   bufferedJump: false, bufferedDash: false,
   onTriangle: false, triangleFacing: null,
   onGroundedPlat: false,
+  // Animation
+  animFrame: 0,    // current frame index (0–7)
+  animTimer: 0,    // counts up each game frame, resets at ANIM_SPEED
 };
 let spawnX = 0, spawnY = 0;
 
@@ -1247,7 +1263,7 @@ let spawnX = 0, spawnY = 0;
 
 function resetEnemies() {
   enemyList = enemyInitData.map(e => ({
-    x: e.x, y: e.y, w: CONFIG.PLAYER_W, h: CONFIG.PLAYER_H,
+    x: e.x, y: e.y, w: CONFIG.ENEMY_W, h: CONFIG.ENEMY_H,
     dir: 1, hp: CONFIG.ENEMY_MAX_HP, active: true,
   }));
 }
@@ -1506,6 +1522,7 @@ function respawn() {
   player.bufferedJump = false; player.bufferedDash = false;
   player.onTriangle = false; player.triangleFacing = null;
   player.onGroundedPlat = false;
+  player.animFrame = 0; player.animTimer = 0;
   resetEnemies();
   projectileList = [];
 }
@@ -2025,6 +2042,20 @@ function update() {
     player.safeX = player.x; player.safeY = player.y;
   }
 
+  // Sprite animation
+  // Cycle walk frames when there's horizontal movement; idle (frame 0) otherwise
+  const hasHorizMove = Math.abs(player.vx) > 0.3;
+  if (hasHorizMove) {
+    player.animTimer++;
+    if (player.animTimer >= ANIM_SPEED) {
+      player.animTimer = 0;
+      player.animFrame = (player.animFrame + 1) % SPRITE_FRAMES;
+    }
+  } else {
+    player.animFrame = 0;
+    player.animTimer = 0;
+  }
+
   // Visual decay
   player.squashX += (1 - player.squashX) * 0.25;
   player.squashY += (1 - player.squashY) * 0.25;
@@ -2181,28 +2212,49 @@ function drawProjectiles() {
 function drawPlayer() {
   const cx = player.x + player.w / 2 - camera.x;
   const cy = player.y + player.h / 2 - camera.y;
-  ctx.save(); ctx.translate(cx, cy); ctx.scale(player.squashX, player.squashY);
+
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.scale(player.squashX, player.squashY);
+
+  // Invincibility flicker
   if (player.invTimer > 0 && Math.floor(player.invTimer / 4) % 2 === 0) ctx.globalAlpha = 0.3;
+
+  // Ghost transparency
   if (player.ghostTimer > 0) {
     const fr = player.ghostTimer < 30 ? 4 : 0;
     if (fr > 0 && Math.floor(player.ghostTimer / fr) % 2 === 0) ctx.globalAlpha = 0.35;
     else ctx.globalAlpha = Math.min(ctx.globalAlpha || 1, 0.6);
   }
-  ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(-player.w / 2 + 2, -player.h / 2 + 2, player.w, player.h);
-  ctx.fillStyle = CONFIG.PLAYER_COLOR; ctx.fillRect(-player.w / 2, -player.h / 2, player.w, player.h);
-  ctx.strokeStyle = CONFIG.PLAYER_OUTLINE; ctx.lineWidth = 1.5;
-  ctx.strokeRect(-player.w / 2, -player.h / 2, player.w, player.h);
-  if (player.ghostTimer > 0) { ctx.fillStyle = 'rgba(200,200,255,0.15)'; ctx.fillRect(-player.w / 2, -player.h / 2, player.w, player.h); }
-  // Eyes
-  const eyeY = -player.h / 2 + 10, eyeSpacing = 5, eyeOffsetX = player.facingRight ? 2 : -2;
-  ctx.fillStyle = '#fff';
-  ctx.fillRect(-eyeSpacing + eyeOffsetX - 2, eyeY - 2, 4, 5);
-  ctx.fillRect( eyeSpacing + eyeOffsetX - 2, eyeY - 2, 4, 5);
-  const pupilShift = player.facingRight ? 1 : -1;
-  ctx.fillStyle = '#1a1a2e';
-  ctx.fillRect(-eyeSpacing + eyeOffsetX - 1 + pupilShift, eyeY - 1, 2, 3);
-  ctx.fillRect( eyeSpacing + eyeOffsetX - 1 + pupilShift, eyeY - 1, 2, 3);
-  ctx.globalAlpha = 1; ctx.restore();
+
+  // The spritesheet has the frog facing LEFT by default.
+  // facingRight = true → mirror horizontally.
+  if (player.facingRight) ctx.scale(-1, 1);
+
+  // Draw the correct animation frame from the spritesheet
+  const srcX = player.animFrame * SPRITE_FRAME_W;
+  if (playerSprite.complete && playerSprite.naturalWidth > 0) {
+    ctx.drawImage(
+      playerSprite,
+      srcX, 0, SPRITE_FRAME_W, SPRITE_FRAME_H,       // source rect
+      -player.w / 2, -player.h / 2, player.w, player.h // dest rect (centered)
+    );
+  } else {
+    // Fallback: colored rectangle if spritesheet hasn't loaded
+    ctx.fillStyle = CONFIG.PLAYER_COLOR;
+    ctx.fillRect(-player.w / 2, -player.h / 2, player.w, player.h);
+    ctx.strokeStyle = CONFIG.PLAYER_OUTLINE; ctx.lineWidth = 1.5;
+    ctx.strokeRect(-player.w / 2, -player.h / 2, player.w, player.h);
+  }
+
+  // Ghost tint overlay
+  if (player.ghostTimer > 0) {
+    ctx.fillStyle = 'rgba(200,200,255,0.15)';
+    ctx.fillRect(-player.w / 2, -player.h / 2, player.w, player.h);
+  }
+
+  ctx.globalAlpha = 1;
+  ctx.restore();
 }
 
 function drawEnemies() {
