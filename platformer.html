@@ -158,10 +158,22 @@ const LEFT_SPAWN_X   = 30;
 
 
 // ╔══════════════════════════════════════════════════════════════╗
-// ║  IMAGE PRELOADING                                           ║
-// ║  All orb, checkpoint, and bullet PNGs                       ║
+// ║  GRAPHICS — all image assets loaded here                    ║
+// ║                                                             ║
+// ║  All PNGs are 29x29 unless noted otherwise.                 ║
+// ║  All paths are relative to the HTML file's location.        ║
+// ║  Orb directory: ../assets/orbs/                             ║
 // ╚══════════════════════════════════════════════════════════════╝
 
+// Helper: load a single image from the orb directory
+function loadOrbImg(filename) {
+  const img = new Image();
+  img.src = '../assets/orbs/' + filename;
+  return img;
+}
+
+// --- Orb images (29x29 PNGs, each named exactly after the orb type) ---
+const orbImages = {};
 const ORB_TYPES = [
   'Ghosting', 'NoGhosting', 'SlowMo', 'Teleport',
   'Boost1', 'Boost2', 'Boost3',
@@ -169,28 +181,20 @@ const ORB_TYPES = [
   'AddAir1', 'AddAir2', 'AddAir3',
   'SetAir1NB', 'SetAir2NB', 'SetAir3NB',
   'AddAir1NB', 'AddAir2NB', 'AddAir3NB',
+  'Bullet1', 'Bullet2', 'Bullet3',
 ];
-
-const orbImages = {};
 for (const name of ORB_TYPES) {
-  const img = new Image();
-  img.src = '../assets/orbs/' + name + '.png';
-  orbImages[name] = img;
+  orbImages[name] = loadOrbImg(name + '.png');
 }
 
-const checkpointImg = new Image();
-checkpointImg.src = '../assets/orbs/checkpoint.png';
+// --- Checkpoint image (29x29) ---
+const checkpointImg = loadOrbImg('checkpoint.png');
 
-const bulletImg = new Image();
-bulletImg.src = '../assets/orbs/bullet.png';
+// --- Bullet projectile image (22x9, points RIGHT by default) ---
+const bulletImg = loadOrbImg('bullet.png');
 
-const airCountImg = new Image();
-airCountImg.src = '../assets/orbs/AirCount.png';
-
-// Bullet orbs all share the bullet.png image
-orbImages['Bullet1'] = bulletImg;
-orbImages['Bullet2'] = bulletImg;
-orbImages['Bullet3'] = bulletImg;
+// --- HUD: Air charge icon (23x11) ---
+const airCountImg = loadOrbImg('AirCount.png');
 
 
 // ╔══════════════════════════════════════════════════════════════╗
@@ -1583,15 +1587,26 @@ function resolveTriangleCollisions() {
     }
 
     // Push player onto slope
-    if (pb > surfaceY && pb <= tri.y + tri.h + 4) {
+    if (pb > surfaceY && pb <= tri.y + tri.h + 6) {
       player.y = surfaceY - player.h;
-      if (player.vy > 0) player.vy = 0;
       player.grounded = true; player.jumping = false;
       player.onTriangle = true; player.triangleFacing = tri.facing;
-      // Slide — fixed speed at 1.5x player move speed
+
+      // Slide — fixed speed along the slope surface (both vx AND vy)
+      // This prevents jitter: no separate gravity needed, player follows slope exactly.
       const slideSpeed = CONFIG.MAX_MOVE_SPEED * 1.5;
-      if (tri.facing === 'left') player.vx = -slideSpeed;
-      else player.vx = slideSpeed;
+      const slopeRatio = tri.h / tri.w;  // vertical rise per horizontal unit
+      if (tri.facing === 'left') {
+        player.vx = -slideSpeed;
+        player.vy = slideSpeed * slopeRatio;
+      } else {
+        player.vx = slideSpeed;
+        player.vy = slideSpeed * slopeRatio;
+      }
+
+      // Suppress any jump or coyote — player cannot escape the slide by jumping
+      player.coyoteTimer = 0;
+      player.jumpBufferTimer = 0;
     }
 
     // Vertical wall collision
@@ -1788,9 +1803,8 @@ function update() {
       if (player.vy > CONFIG.TERMINAL_VELOCITY) player.vy = CONFIG.TERMINAL_VELOCITY;
     }
   } else if (onTri && player.dashTimer <= 0) {
-    // On triangle: gravity only (collision resolver sets fixed slide speed)
-    player.vy += CONFIG.GRAVITY;
-    if (player.vy > CONFIG.TERMINAL_VELOCITY) player.vy = CONFIG.TERMINAL_VELOCITY;
+    // On triangle: do nothing here. The collision resolver sets vx and vy
+    // along the slope each frame for smooth sliding. No gravity needed.
   } else {
     player.vx *= CONFIG.MOVE_DECEL;
     if (Math.abs(player.vx) < 0.1) player.vx = 0;
@@ -2277,40 +2291,47 @@ function drawFinishOrb() {
 
 function drawHUD() {
   const hudX = 36, hudY = 24;
-  const rowGap = 20;  // equidistant vertical spacing between status rows
+  const rowGap = 20;  // equidistant vertical spacing between the three status rows
 
   // ── Row 1: Hearts ──
-  const heartH = 27;  // approximate visual height of heart shape
+  // Heart shape is drawn centered on (hx, hy). With s=12:
+  //   left edge  = hx - s,   right edge = hx + s
+  //   top edge   = hy - s*0.3, bottom edge = hy + s*1.5
+  // Align left edge of first heart with hudX, top edge with hudY.
+  const heartS = 12;
+  const heartSpacing = 30;  // center-to-center distance between hearts
   for (let i = 0; i < levelMaxHP; i++) {
-    const hx = hudX + i * 38, hy = hudY;
+    const hx = hudX + heartS + i * heartSpacing;
+    const hy = hudY + heartS * 0.3;
     ctx.fillStyle = i < player.hp ? CONFIG.HEART_FULL : CONFIG.HEART_EMPTY;
-    ctx.beginPath(); const s = 12;
-    ctx.moveTo(hx, hy + s * 0.3);
-    ctx.bezierCurveTo(hx, hy - s * 0.3, hx - s, hy - s * 0.3, hx - s, hy + s * 0.3);
-    ctx.bezierCurveTo(hx - s, hy + s * 0.8, hx, hy + s * 1.2, hx, hy + s * 1.5);
-    ctx.bezierCurveTo(hx, hy + s * 1.2, hx + s, hy + s * 0.8, hx + s, hy + s * 0.3);
-    ctx.bezierCurveTo(hx + s, hy - s * 0.3, hx, hy - s * 0.3, hx, hy + s * 0.3);
+    ctx.beginPath();
+    ctx.moveTo(hx, hy + heartS * 0.3);
+    ctx.bezierCurveTo(hx, hy - heartS * 0.3, hx - heartS, hy - heartS * 0.3, hx - heartS, hy + heartS * 0.3);
+    ctx.bezierCurveTo(hx - heartS, hy + heartS * 0.8, hx, hy + heartS * 1.2, hx, hy + heartS * 1.5);
+    ctx.bezierCurveTo(hx, hy + heartS * 1.2, hx + heartS, hy + heartS * 0.8, hx + heartS, hy + heartS * 0.3);
+    ctx.bezierCurveTo(hx + heartS, hy - heartS * 0.3, hx, hy - heartS * 0.3, hx, hy + heartS * 0.3);
     ctx.fill();
   }
+  const heartVisualH = Math.ceil(heartS * 1.8);  // 22px
 
   // ── Row 2: Bullets (only if shooting unlocked) ──
-  const bulletsY = hudY + heartH + rowGap;
+  const bulletIconW = 22, bulletIconH = 9, bulletGap = 5;
+  const bulletsY = hudY + heartVisualH + rowGap;
   if (shootingUnlocked()) {
-    const iconW = 22, iconH = 9, gap = 4;
     for (let i = 0; i < player.shots; i++) {
-      const ix = hudX + i * (iconW + gap);
+      const ix = hudX + i * (bulletIconW + bulletGap);
       if (bulletImg.complete && bulletImg.naturalWidth > 0) {
-        ctx.drawImage(bulletImg, ix, bulletsY, iconW, iconH);
+        ctx.drawImage(bulletImg, ix, bulletsY, bulletIconW, bulletIconH);
       } else {
         ctx.fillStyle = '#ddd';
-        ctx.fillRect(ix, bulletsY, iconW, iconH);
+        ctx.fillRect(ix, bulletsY, bulletIconW, bulletIconH);
       }
     }
   }
 
   // ── Row 3: Air charges ──
-  const airY = bulletsY + 9 + rowGap;  // 9 = bullet icon height
-  const airIconW = 20, airIconH = 10, airGap = 4;
+  const airIconW = 23, airIconH = 11, airGap = 4;
+  const airY = bulletsY + bulletIconH + rowGap;
   for (let i = 0; i < player.airCharges; i++) {
     const ix = hudX + i * (airIconW + airGap);
     if (airCountImg.complete && airCountImg.naturalWidth > 0) {
