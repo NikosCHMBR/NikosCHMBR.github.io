@@ -113,10 +113,9 @@ const CONFIG = {
   SHOT_HOVER_FRAMES: 6,
   SHOT_KNOCKBACK: 2,
   SHOT_ENEMY_DAMAGE: 3,
-  KILLS_PER_REFUND: 2,
   SHOOT_UNLOCK_LEVEL: 9,  // 0-indexed: shooting from level 10+
-  BULLET_W: 18,            // bullet hitbox width (along travel)
-  BULLET_H: 10,            // bullet hitbox height (perpendicular)
+  BULLET_W: 22,            // bullet hitbox width (along travel)
+  BULLET_H: 9,             // bullet hitbox height (perpendicular)
 
   // --- Slow time (SlowMo orb) ---
   SLOW_DURATION_MS: 3000,
@@ -184,6 +183,9 @@ checkpointImg.src = '../assets/orbs/checkpoint.png';
 
 const bulletImg = new Image();
 bulletImg.src = '../assets/orbs/bullet.png';
+
+const airCountImg = new Image();
+airCountImg.src = '../assets/orbs/AirCount.png';
 
 // Bullet orbs all share the bullet.png image
 orbImages['Bullet1'] = bulletImg;
@@ -1227,7 +1229,7 @@ const player = {
   hp: CONFIG.MAX_HP, invTimer: 0,
   lastGroundedX: 0, lastGroundedY: 0,
   squashX: 1, squashY: 1, landTimer: 0, dashTrails: [],
-  shots: CONFIG.MAX_SHOTS, shotCooldownTimer: 0, shotHoverTimer: 0, shotKills: 0,
+  shots: CONFIG.MAX_SHOTS, shotCooldownTimer: 0, shotHoverTimer: 0,
   bufferedJump: false, bufferedDash: false,
   onTriangle: false, triangleFacing: null,
   onGroundedPlat: false,
@@ -1486,7 +1488,7 @@ function respawn() {
   player.safeX = spawnX; player.safeY = spawnY;
   player.squashX = 1; player.squashY = 1; player.dashTrails = [];
   player.shots = CONFIG.MAX_SHOTS; player.shotCooldownTimer = 0;
-  player.shotHoverTimer = 0; player.shotKills = 0;
+  player.shotHoverTimer = 0;
   player.bufferedJump = false; player.bufferedDash = false;
   player.onTriangle = false; player.triangleFacing = null;
   player.onGroundedPlat = false;
@@ -1576,9 +1578,9 @@ function resolveTriangleCollisions() {
       if (player.vy > 0) player.vy = 0;
       player.grounded = true; player.jumping = false;
       player.onTriangle = true; player.triangleFacing = tri.facing;
-      // Slide force
+      // Slide force — strong acceleration for slippery feel
       const hyp = Math.sqrt(tri.w * tri.w + tri.h * tri.h);
-      const slideAccel = CONFIG.GRAVITY * (tri.h / hyp);
+      const slideAccel = CONFIG.GRAVITY * 5 * (tri.h / hyp);
       const cosA = tri.w / hyp;
       if (tri.facing === 'left') player.vx -= slideAccel * cosA;
       else player.vx += slideAccel * cosA;
@@ -1662,14 +1664,7 @@ function updateProjectiles() {
       if (!enemy.active) continue;
       if (rectsOverlap(bb, enemy)) {
         enemy.hp -= CONFIG.SHOT_ENEMY_DAMAGE;
-        if (enemy.hp <= 0) {
-          enemy.active = false;
-          player.shotKills++;
-          if (player.shotKills >= CONFIG.KILLS_PER_REFUND) {
-            player.shotKills -= CONFIG.KILLS_PER_REFUND;
-            player.shots++;
-          }
-        }
+        if (enemy.hp <= 0) { enemy.active = false; }
         hitEnemy = true; break;
       }
     }
@@ -1787,7 +1782,7 @@ function update() {
   } else if (onTri && player.dashTimer <= 0) {
     player.vy += CONFIG.GRAVITY;
     if (player.vy > CONFIG.TERMINAL_VELOCITY) player.vy = CONFIG.TERMINAL_VELOCITY;
-    player.vx *= 0.95;
+    player.vx *= 0.99;  // very low friction — slippery surface
   } else {
     player.vx *= CONFIG.MOVE_DECEL;
     if (Math.abs(player.vx) < 0.1) player.vx = 0;
@@ -2275,7 +2270,7 @@ function drawHUD() {
   // Shots (only if shooting unlocked) — show bullet.png for each shot
   if (shootingUnlocked()) {
     const shotY = nextY;
-    const iconW = 18, iconH = 10, gap = 4;
+    const iconW = 22, iconH = 9, gap = 4;
     for (let i = 0; i < player.shots; i++) {
       const ix = hudX + i * (iconW + gap);
       if (bulletImg.complete && bulletImg.naturalWidth > 0) {
@@ -2285,22 +2280,21 @@ function drawHUD() {
         ctx.fillRect(ix, shotY - iconH / 2, iconW, iconH);
       }
     }
-    // Kill refund bar (below bullet icons)
-    const refundY = shotY + iconH / 2 + 4, refundW = 30;
-    ctx.fillStyle = '#222'; ctx.fillRect(hudX, refundY, refundW, 3);
-    const rp = player.shotKills / CONFIG.KILLS_PER_REFUND;
-    ctx.fillStyle = '#aaa'; ctx.fillRect(hudX, refundY, refundW * rp, 3);
-    ctx.fillStyle = '#444'; ctx.fillRect(hudX + refundW / 2 - 0.5, refundY, 1, 3);
-    nextY = shotY + iconH / 2 + 14;
+    nextY = shotY + iconH / 2 + 6;
   }
 
-  // AIR
+  // AIR — show AirCount.png for each air charge
   const airY = nextY;
-  ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.font = '16px Courier New'; ctx.textAlign = 'left';
-  ctx.fillText('AIR', hudX - 4, airY + 6);
-  ctx.fillStyle = player.airCharges > 0 ? CONFIG.CHARGE_FULL : CONFIG.CHARGE_EMPTY;
-  ctx.font = '18px Courier New';
-  ctx.fillText('' + player.airCharges, hudX + 48, airY + 7);
+  const airIconW = 20, airIconH = 10, airGap = 4;
+  for (let i = 0; i < player.airCharges; i++) {
+    const ix = hudX + i * (airIconW + airGap);
+    if (airCountImg.complete && airCountImg.naturalWidth > 0) {
+      ctx.drawImage(airCountImg, ix, airY - airIconH / 2, airIconW, airIconH);
+    } else {
+      ctx.fillStyle = CONFIG.CHARGE_FULL;
+      ctx.fillRect(ix, airY - airIconH / 2, airIconW, airIconH);
+    }
+  }
 
   // Cooldown bars
   const barBaseY = airY + 16;
