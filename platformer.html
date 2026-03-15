@@ -57,9 +57,9 @@ const CONFIG = {
   TERMINAL_VELOCITY: 12,
   FIXED_DT: 1000 / 60,
 
-  // --- Player size (matches spritesheet frame: 30x21) ---
-  PLAYER_W: 30,
-  PLAYER_H: 21,
+  // --- Player size (matches spritesheet frame: 50x33) ---
+  PLAYER_W: 50,
+  PLAYER_H: 33,
 
   // --- Movement ---
   MOVE_ACCEL: 1.6,
@@ -160,8 +160,8 @@ const ENEMY_FLOOR_Y  = GROUND_Y - CONFIG.ENEMY_H;  // for placing enemies on gro
 const LEFT_SPAWN_X   = 30;
 
 // Spritesheet animation constants
-const SPRITE_FRAME_W = 30;   // width of one frame in the spritesheet
-const SPRITE_FRAME_H = 21;   // height of one frame in the spritesheet
+const SPRITE_FRAME_W = 50;   // width of one frame in the spritesheet
+const SPRITE_FRAME_H = 33;   // height of one frame in the spritesheet
 const SPRITE_FRAMES  = 8;    // total frames in walk cycle
 const ANIM_SPEED     = 5;    // game frames per animation frame
 
@@ -2220,11 +2220,11 @@ function drawPlayer() {
   // Invincibility flicker
   if (player.invTimer > 0 && Math.floor(player.invTimer / 4) % 2 === 0) ctx.globalAlpha = 0.3;
 
-  // Ghost transparency
+  // Ghosting — sprite opacity fluctuates smoothly while active
   if (player.ghostTimer > 0) {
-    const fr = player.ghostTimer < 30 ? 4 : 0;
-    if (fr > 0 && Math.floor(player.ghostTimer / fr) % 2 === 0) ctx.globalAlpha = 0.35;
-    else ctx.globalAlpha = Math.min(ctx.globalAlpha || 1, 0.6);
+    // Sine wave between 0.3 and 0.7, speeding up when about to expire
+    const speed = player.ghostTimer < 30 ? 0.3 : 0.1;
+    ctx.globalAlpha = 0.5 + 0.2 * Math.sin(Date.now() * speed);
   }
 
   // The spritesheet has the frog facing LEFT by default.
@@ -2245,12 +2245,6 @@ function drawPlayer() {
     ctx.fillRect(-player.w / 2, -player.h / 2, player.w, player.h);
     ctx.strokeStyle = CONFIG.PLAYER_OUTLINE; ctx.lineWidth = 1.5;
     ctx.strokeRect(-player.w / 2, -player.h / 2, player.w, player.h);
-  }
-
-  // Ghost tint overlay
-  if (player.ghostTimer > 0) {
-    ctx.fillStyle = 'rgba(200,200,255,0.15)';
-    ctx.fillRect(-player.w / 2, -player.h / 2, player.w, player.h);
   }
 
   ctx.globalAlpha = 1;
