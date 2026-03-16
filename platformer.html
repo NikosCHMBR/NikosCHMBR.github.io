@@ -113,7 +113,7 @@ const CONFIG = {
   SHOT_SPEED: 8,
   SHOT_COOLDOWN: 7,
   SHOT_HOVER_FRAMES: 6,
-  SHOT_KNOCKBACK: 2,
+  SHOT_KNOCKBACK: 4,
   SHOT_ENEMY_DAMAGE: 3,
   SHOOT_UNLOCK_LEVEL: 9,  // 0-indexed: shooting from level 10+
   BULLET_W: 22,            // bullet hitbox width (along travel)
@@ -147,8 +147,8 @@ const CONFIG = {
   HEART_EMPTY:      '#2a2a3a',
   SPIKE_COLOR:      '#999aaa',
   SPIKE_OUTLINE:    '#777788',
-  ENEMY_COLOR:      '#6b1a1a',
-  ENEMY_OUTLINE:    '#8b2a2a',
+  ENEMY_COLOR:      '#a83030',
+  ENEMY_OUTLINE:    '#cc4444',
   TRIANGLE_COLOR:   '#2a2a40',
   TRIANGLE_OUTLINE: '#3a3a55',
 };
@@ -209,9 +209,17 @@ const airCountImg = loadOrbImg('AirCount.png');
 const playerSprite = new Image();
 playerSprite.src = '../assets/character/SpritesheetFrogWalk.png';
 
-// --- Background image (1920x1080, displayed at 150% zoom) ---
-const bgImage = new Image();
-bgImage.src = '../assets/background/Sunset.png';
+// --- Background images (1920x1080 each, displayed at 150% zoom) ---
+// Add new backgrounds here. Each level selects one by name via its `background` field.
+const bgImages = {};
+function loadBgImg(name) {
+  const img = new Image();
+  img.src = '../assets/background/' + name + '.png';
+  bgImages[name] = img;
+  return img;
+}
+loadBgImg('Sunset');   // default background — add more here as needed
+
 const BG_ZOOM = 1.5;
 const BG_ZOOM_W = 1920 * BG_ZOOM;  // 2880
 const BG_ZOOM_H = 1080 * BG_ZOOM;  // 1620
@@ -250,6 +258,7 @@ function makeBase(arenaW, groundY) {
 // ║    checkpoints     — [{x,y}] 1–3, all must be cleared       ║
 // ║    movingPlatforms — [{x1,y1,x2,y2,w,h,speed,ghostable?}]   ║
 // ║    triangleBlocks  — [{x,y,w,h,facing:'left'|'right'}]      ║
+// ║    background      — name of bg image (default 'Sunset')     ║
 // ║                                                             ║
 // ║  Platform flags:                                            ║
 // ║    ghostable: true   — passable while ghost is active        ║
@@ -988,6 +997,7 @@ const LEVELS = [
     spawnX: LEFT_SPAWN_X,
     spawnY: FLOOR_SPAWN_Y,
     hp: 8,                          // per-level HP override (default is 5)
+    background: 'Sunset',            // background image name (from ../assets/background/)
     // finishCriteria: 'default',   // could be 'killAll' or 'activateAllOrbs'
 
     platforms: [
@@ -1146,6 +1156,7 @@ let arenaW          = 2400;
 let levelH          = CONFIG.VIEW_H;
 let levelGroundY    = GROUND_Y;
 let levelMaxHP      = CONFIG.MAX_HP;
+let currentBg       = null;  // current background Image object
 let platforms       = [];
 let spikeList       = [];
 let orbObjects      = [];
@@ -1422,6 +1433,7 @@ function loadLevel(n) {
   levelH       = lvl.levelH || CONFIG.VIEW_H;
   levelGroundY = levelH - CONFIG.GROUND_H;
   levelMaxHP   = lvl.hp !== undefined ? lvl.hp : CONFIG.MAX_HP;
+  currentBg    = bgImages[lvl.background || 'Sunset'] || bgImages['Sunset'];
   spawnX       = lvl.spawnX;
   spawnY       = lvl.spawnY;
 
@@ -2086,7 +2098,7 @@ function update() {
 
 function drawBackground() {
   // --- Background image (150% zoom, parallax at 30% of camera speed) ---
-  if (bgImage.complete && bgImage.naturalWidth > 0) {
+  if (currentBg && currentBg.complete && currentBg.naturalWidth > 0) {
     // Background scrolls at 30% of foreground camera movement for depth.
     // Start at bottom-left of the zoomed image.
     const parallax = 0.3;
@@ -2099,7 +2111,7 @@ function drawBackground() {
 
     // Source rect in the original 1920x1080 image (divide by zoom)
     ctx.drawImage(
-      bgImage,
+      currentBg,
       clampedX / BG_ZOOM, clampedY / BG_ZOOM,
       CONFIG.VIEW_W / BG_ZOOM, CONFIG.VIEW_H / BG_ZOOM,
       0, 0, CONFIG.VIEW_W, CONFIG.VIEW_H
@@ -2163,13 +2175,11 @@ function drawFloorHoles() {
     const sx = hole.x - camera.x, sy = hole.y - camera.y;
     if (sx + hole.w < 0 || sx > CONFIG.VIEW_W) continue;
 
-    // Gradient: fully transparent for the first ~10px, then darkening into the hole
-    const fadeStart = Math.min(10, hole.h * 0.25);  // 10px or 25% of hole height
+    // Gradient: fully transparent for first 5px, then smoothly darkening
+    const clearZone = Math.min(5, hole.h * 0.15);
     const grad = ctx.createLinearGradient(sx, sy, sx, sy + hole.h);
     grad.addColorStop(0, 'rgba(0, 0, 0, 0)');
-    grad.addColorStop(fadeStart / hole.h, 'rgba(0, 0, 0, 0)');
-    grad.addColorStop(fadeStart / hole.h + 0.15, 'rgba(0, 0, 0, 0.2)');
-    grad.addColorStop(0.7, 'rgba(0, 0, 0, 0.4)');
+    grad.addColorStop(clearZone / hole.h, 'rgba(0, 0, 0, 0)');
     grad.addColorStop(1, 'rgba(0, 0, 0, 0.5)');
     ctx.fillStyle = grad;
     ctx.fillRect(sx, sy, hole.w, hole.h);
