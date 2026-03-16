@@ -205,9 +205,16 @@ const bulletImg = loadOrbImg('bullet.png');
 // --- HUD: Air charge icon (23x11) ---
 const airCountImg = loadOrbImg('AirCount.png');
 
-// --- Player spritesheet (8 frames, each 30x21, frog faces LEFT by default) ---
+// --- Player spritesheet (8 frames, each 50x33, frog faces LEFT by default) ---
 const playerSprite = new Image();
 playerSprite.src = '../assets/character/SpritesheetFrogWalk.png';
+
+// --- Background image (1920x1080, displayed at 150% zoom) ---
+const bgImage = new Image();
+bgImage.src = '../assets/background/Sunset.png';
+const BG_ZOOM = 1.5;
+const BG_ZOOM_W = 1920 * BG_ZOOM;  // 2880
+const BG_ZOOM_H = 1080 * BG_ZOOM;  // 1620
 
 
 // ╔══════════════════════════════════════════════════════════════╗
@@ -2078,9 +2085,41 @@ function update() {
 // ╚══════════════════════════════════════════════════════════════╝
 
 function drawBackground() {
-  ctx.fillStyle = CONFIG.BG_COLOR;
-  ctx.fillRect(0, 0, CONFIG.VIEW_W, CONFIG.VIEW_H);
-  if (timeScale < 1) { ctx.fillStyle = 'rgba(80,40,120,0.06)'; ctx.fillRect(0, 0, CONFIG.VIEW_W, CONFIG.VIEW_H); }
+  // --- Background image (150% zoom, starts bottom-left, scrolls with camera) ---
+  if (bgImage.complete && bgImage.naturalWidth > 0) {
+    // Map camera position proportionally to background scroll range.
+    // At camera (0,0) we see the bottom-left of the zoomed image.
+    const maxCamX = Math.max(1, arenaW - CONFIG.VIEW_W);
+    const maxCamY = Math.max(1, levelH - CONFIG.VIEW_H);
+    const bgScrollX = BG_ZOOM_W - CONFIG.VIEW_W;  // max horizontal scroll in bg
+    const bgScrollY = BG_ZOOM_H - CONFIG.VIEW_H;  // max vertical scroll in bg
+
+    // Horizontal: left edge at cam 0, right edge at cam max
+    const bgX = (camera.x / maxCamX) * bgScrollX;
+    // Vertical: bottom at cam 0 (start), top at cam max
+    const bgY = bgScrollY - (camera.y / maxCamY) * bgScrollY;
+
+    // Draw the visible portion of the zoomed background
+    // Source rect in the original 1920x1080 image (divide by zoom to get source coords)
+    ctx.drawImage(
+      bgImage,
+      bgX / BG_ZOOM, bgY / BG_ZOOM,                                        // source x, y
+      CONFIG.VIEW_W / BG_ZOOM, CONFIG.VIEW_H / BG_ZOOM,                     // source w, h
+      0, 0, CONFIG.VIEW_W, CONFIG.VIEW_H                                     // dest (full viewport)
+    );
+  } else {
+    // Fallback: solid color if image hasn't loaded
+    ctx.fillStyle = CONFIG.BG_COLOR;
+    ctx.fillRect(0, 0, CONFIG.VIEW_W, CONFIG.VIEW_H);
+  }
+
+  // Slow-time tint
+  if (timeScale < 1) {
+    ctx.fillStyle = 'rgba(80,40,120,0.06)';
+    ctx.fillRect(0, 0, CONFIG.VIEW_W, CONFIG.VIEW_H);
+  }
+
+  // Grid overlay
   ctx.strokeStyle = CONFIG.GRID_COLOR; ctx.lineWidth = 1;
   const gs = 40;
   const sX = Math.floor(camera.x / gs) * gs;
@@ -2127,10 +2166,22 @@ function drawFloorHoles() {
   for (const hole of floorHoleList) {
     const sx = hole.x - camera.x, sy = hole.y - camera.y;
     if (sx + hole.w < 0 || sx > CONFIG.VIEW_W) continue;
-    ctx.fillStyle = '#050508'; ctx.fillRect(sx, sy, hole.w, hole.h);
-    ctx.strokeStyle = 'rgba(200,50,50,0.3)'; ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(sx, sy + hole.h);
-    ctx.moveTo(sx + hole.w, sy); ctx.lineTo(sx + hole.w, sy + hole.h); ctx.stroke();
+
+    // Vertical gradient: transparent at top → dark at bottom (50% max opacity)
+    // Background image is visible through the hole, darkening as it goes deeper
+    const grad = ctx.createLinearGradient(sx, sy, sx, sy + hole.h);
+    grad.addColorStop(0, 'rgba(0, 0, 0, 0.15)');
+    grad.addColorStop(0.5, 'rgba(0, 0, 0, 0.35)');
+    grad.addColorStop(1, 'rgba(0, 0, 0, 0.5)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(sx, sy, hole.w, hole.h);
+
+    // Subtle edge lines for definition
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)'; ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(sx, sy); ctx.lineTo(sx, sy + hole.h);
+    ctx.moveTo(sx + hole.w, sy); ctx.lineTo(sx + hole.w, sy + hole.h);
+    ctx.stroke();
   }
 }
 
