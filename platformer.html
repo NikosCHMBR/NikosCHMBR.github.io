@@ -2085,30 +2085,26 @@ function update() {
 // ╚══════════════════════════════════════════════════════════════╝
 
 function drawBackground() {
-  // --- Background image (150% zoom, starts bottom-left, scrolls with camera) ---
+  // --- Background image (150% zoom, parallax at 30% of camera speed) ---
   if (bgImage.complete && bgImage.naturalWidth > 0) {
-    // Map camera position proportionally to background scroll range.
-    // At camera (0,0) we see the bottom-left of the zoomed image.
-    const maxCamX = Math.max(1, arenaW - CONFIG.VIEW_W);
-    const maxCamY = Math.max(1, levelH - CONFIG.VIEW_H);
-    const bgScrollX = BG_ZOOM_W - CONFIG.VIEW_W;  // max horizontal scroll in bg
-    const bgScrollY = BG_ZOOM_H - CONFIG.VIEW_H;  // max vertical scroll in bg
+    // Background scrolls at 30% of foreground camera movement for depth.
+    // Start at bottom-left of the zoomed image.
+    const parallax = 0.3;
+    const bgX = camera.x * parallax;
+    const bgY = (BG_ZOOM_H - CONFIG.VIEW_H) - camera.y * parallax;  // bottom-left start
 
-    // Horizontal: left edge at cam 0, right edge at cam max
-    const bgX = (camera.x / maxCamX) * bgScrollX;
-    // Vertical: bottom at cam 0 (start), top at cam max
-    const bgY = bgScrollY - (camera.y / maxCamY) * bgScrollY;
+    // Clamp to image bounds
+    const clampedX = Math.max(0, Math.min(bgX, BG_ZOOM_W - CONFIG.VIEW_W));
+    const clampedY = Math.max(0, Math.min(bgY, BG_ZOOM_H - CONFIG.VIEW_H));
 
-    // Draw the visible portion of the zoomed background
-    // Source rect in the original 1920x1080 image (divide by zoom to get source coords)
+    // Source rect in the original 1920x1080 image (divide by zoom)
     ctx.drawImage(
       bgImage,
-      bgX / BG_ZOOM, bgY / BG_ZOOM,                                        // source x, y
-      CONFIG.VIEW_W / BG_ZOOM, CONFIG.VIEW_H / BG_ZOOM,                     // source w, h
-      0, 0, CONFIG.VIEW_W, CONFIG.VIEW_H                                     // dest (full viewport)
+      clampedX / BG_ZOOM, clampedY / BG_ZOOM,
+      CONFIG.VIEW_W / BG_ZOOM, CONFIG.VIEW_H / BG_ZOOM,
+      0, 0, CONFIG.VIEW_W, CONFIG.VIEW_H
     );
   } else {
-    // Fallback: solid color if image hasn't loaded
     ctx.fillStyle = CONFIG.BG_COLOR;
     ctx.fillRect(0, 0, CONFIG.VIEW_W, CONFIG.VIEW_H);
   }
@@ -2167,21 +2163,16 @@ function drawFloorHoles() {
     const sx = hole.x - camera.x, sy = hole.y - camera.y;
     if (sx + hole.w < 0 || sx > CONFIG.VIEW_W) continue;
 
-    // Vertical gradient: transparent at top → dark at bottom (50% max opacity)
-    // Background image is visible through the hole, darkening as it goes deeper
+    // Gradient: fully transparent for the first ~10px, then darkening into the hole
+    const fadeStart = Math.min(10, hole.h * 0.25);  // 10px or 25% of hole height
     const grad = ctx.createLinearGradient(sx, sy, sx, sy + hole.h);
-    grad.addColorStop(0, 'rgba(0, 0, 0, 0.15)');
-    grad.addColorStop(0.5, 'rgba(0, 0, 0, 0.35)');
+    grad.addColorStop(0, 'rgba(0, 0, 0, 0)');
+    grad.addColorStop(fadeStart / hole.h, 'rgba(0, 0, 0, 0)');
+    grad.addColorStop(fadeStart / hole.h + 0.15, 'rgba(0, 0, 0, 0.2)');
+    grad.addColorStop(0.7, 'rgba(0, 0, 0, 0.4)');
     grad.addColorStop(1, 'rgba(0, 0, 0, 0.5)');
     ctx.fillStyle = grad;
     ctx.fillRect(sx, sy, hole.w, hole.h);
-
-    // Subtle edge lines for definition
-    ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)'; ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(sx, sy); ctx.lineTo(sx, sy + hole.h);
-    ctx.moveTo(sx + hole.w, sy); ctx.lineTo(sx + hole.w, sy + hole.h);
-    ctx.stroke();
   }
 }
 
