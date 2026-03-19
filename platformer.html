@@ -98,6 +98,7 @@ const CONFIG = {
   ENEMY_SPIKE_DIST: 100,      // enemies won't approach closer than this to spikes
   WALL_FADE_W: 40,            // visual fade width at arena edges (same as GROUND_H)
   WALL_KNOCKBACK: 8,          // 2x enemy knockback, applied at arena edge
+  FADE_GONE_FRAMES: 240,      // 4 seconds at 60fps — how long a faded platform stays gone
 
   // --- Environment ---
   SPIKE_TRIANGLE_H: 16,
@@ -215,7 +216,7 @@ playerSprite.src = '../assets/character/SpritesheetFrogWalk.png';
 
 // --- Death screen overlay ---
 const deathScreenImg = new Image();
-deathScreenImg.src = '../assets/deathscreen.png';
+deathScreenImg.src = '../assets/screens/deathscreen.png';
 
 // --- Background images (1920x1080 each, displayed at 150% zoom) ---
 // Add new backgrounds here. Each level selects one by name via its `background` field.
@@ -270,6 +271,8 @@ function makeBase(arenaW, groundY) {
 // ║  Platform flags:                                            ║
 // ║    ghostable: true   — passable while ghost is active        ║
 // ║    grounded: true    — player can't jump or dash on it       ║
+// ║    fade: true, fadeTime: N — fades out over N seconds,       ║
+// ║                              gone for 4s, then reappears     ║
 // ╚══════════════════════════════════════════════════════════════╝
 
 const LEVELS = [
@@ -1032,10 +1035,10 @@ const LEVELS = [
       { x: 2850, y: 550, w: 120, h: 16 },
       { x: 3050, y: 500, w: 120, h: 16 },
 
-      // ── Section 5: Triangle blocks + grounded platform (x: 3200–4000) ──
+      // ── Section 5: Triangle blocks + grounded + fade platform (x: 3200–4000) ──
       { x: 3250, y: 580, w: 140, h: 16 },
       { x: 3650, y: 580, w: 180, h: 16, grounded: true },  // grounded: can't jump/dash here!
-      { x: 3900, y: 540, w: 120, h: 16 },
+      { x: 3900, y: 540, w: 120, h: 16, fade: true, fadeTime: 3 }, // fade: vanishes over 3s, gone 4s, repeats
 
       // ── Section 6: Moving platforms (x: 4000–4800) ──
       // (moving platforms defined separately below)
@@ -1185,8 +1188,8 @@ let slowRealTimeLeft  = 0;
 let slowRealTimeTotal = 0;
 
 // Death screen state (real-time ms)
-const DEATH_DURATION_MS = 5000;  // total freeze time
-const DEATH_FADE_MS     = 4000;  // fade-in period (0% → 90% opacity)
+const DEATH_DURATION_MS = 8000;  // total freeze time (4s fade + 4s hold)
+const DEATH_FADE_MS     = 4000;  // fade-in period (0% → 100% opacity)
 let deathTimer          = 0;     // ms elapsed since death
 
 
@@ -1280,7 +1283,7 @@ const player = {
   bufferedJump: false, bufferedDash: false,
   onTriangle: false, triangleFacing: null,
   onGroundedPlat: false,
-  spikeStunTimer: 0,  // frozen after spike hit
+  stunTimer: 0,  // frozen after spike hit or fall damage
   // Animation
   animFrame: 0,
   animTimer: 0,
@@ -1465,6 +1468,16 @@ function loadLevel(n) {
     return { plat, x1: mp.x1, y1: mp.y1, x2: mp.x2, y2: mp.y2, speed: mp.speed, dist: Math.sqrt(dx*dx + dy*dy) || 1, progress: 0, direction: 1 };
   });
 
+  // Initialize fade state on platforms that have fade: true
+  for (const plat of platforms) {
+    if (plat.fade) {
+      plat.fadeFrames   = (plat.fadeTime || 1) * 60;  // convert seconds to frames
+      plat.fadeTimer    = 0;      // counts up during visible phase
+      plat.fadeGone     = false;  // true when fully faded out
+      plat.fadeGoneTimer = 0;     // counts up during gone phase
+    }
+  }
+
   floorHoleList = (lvl.floorHoles || []).map(h => ({ x: h.x, y: levelGroundY, w: h.w, h: CONFIG.GROUND_H }));
   spikeList     = (lvl.spikeZones || []).map(sz => ({ x: sz.x, y: sz.y, w: sz.w, h: sz.h }));
 
@@ -1512,6 +1525,7 @@ function orbToBox(o) {
 }
 
 function isSolid(plat) {
+  if (plat.fade && plat.fadeGone) return false;
   if (plat.isGround) return true;
   if (plat.ghostable && player.ghostTimer > 0) return false;
   return true;
@@ -1554,7 +1568,7 @@ function respawn() {
   player.bufferedJump = false; player.bufferedDash = false;
   player.onTriangle = false; player.triangleFacing = null;
   player.onGroundedPlat = false;
-  player.spikeStunTimer = 0;
+  player.stunTimer = 0;
   player.animFrame = 0; player.animTimer = 0;
   resetEnemies();
   projectileList = [];
@@ -1568,7 +1582,7 @@ function triggerDeath() {
 
 // General damage (from enemies, etc.) — resets to last safe ground position
 function takeDamage(amount) {
-  if (player.invTimer > 0 || player.spikeStunTimer > 0) return;
+  if (player.invTimer > 0 || player.stunTimer > 0) return;
   player.hp -= amount;
   if (player.hp <= 0) { triggerDeath(); return; }
   player.x = player.lastGroundedX; player.y = player.lastGroundedY;
@@ -1578,18 +1592,18 @@ function takeDamage(amount) {
 
 // Spike-specific damage — half invincibility, player frozen during it
 function takeSpikeDamage() {
-  if (player.invTimer > 0 || player.spikeStunTimer > 0) return;
+  if (player.invTimer > 0 || player.stunTimer > 0) return;
   player.hp -= 1;
   if (player.hp <= 0) { triggerDeath(); return; }
   player.x = player.lastGroundedX; player.y = player.lastGroundedY;
   player.vx = 0; player.vy = 0; player.dashTimer = 0;
-  player.spikeStunTimer = CONFIG.SPIKE_INVINCIBILITY;
+  player.stunTimer = CONFIG.SPIKE_INVINCIBILITY;
   player.invTimer = CONFIG.SPIKE_INVINCIBILITY;
 }
 
-// Fall damage — smart respawn near the hole edge, not right at it
+// Fall damage — respawn on the side of the hole where player last had ground contact
 function takeFallDamage() {
-  if (player.invTimer > 0) return;
+  if (player.invTimer > 0 || player.stunTimer > 0) return;
   player.hp -= CONFIG.FALL_DAMAGE;
   if (player.hp <= 0) { triggerDeath(); return; }
 
@@ -1604,14 +1618,15 @@ function takeFallDamage() {
   }
 
   if (nearestHole) {
-    // Determine which side of the hole the player approached from
+    // Use lastGroundedX to determine which side the player came from
+    const lastCX = player.lastGroundedX + player.w / 2;
     const holeCenter = nearestHole.x + nearestHole.w / 2;
     const halfW = player.w / 2;
-    if (pcx < holeCenter) {
-      // Fell from the left side → spawn half player width left of hole's left edge
+    if (lastCX <= holeCenter) {
+      // Last stood on the left side → spawn half player width left of hole's left edge
       player.x = nearestHole.x - player.w / 2 - halfW;
     } else {
-      // Fell from the right side → spawn half player width right of hole's right edge
+      // Last stood on the right side → spawn half player width right of hole's right edge
       player.x = nearestHole.x + nearestHole.w - player.w / 2 + halfW;
     }
     player.y = player.lastGroundedY;
@@ -1622,12 +1637,13 @@ function takeFallDamage() {
   }
 
   player.vx = 0; player.vy = 0; player.dashTimer = 0;
+  player.stunTimer = CONFIG.INVINCIBILITY_FRAMES;
   player.invTimer = CONFIG.INVINCIBILITY_FRAMES;
 }
 
 // Enemy contact damage — knockback away from enemy
 function takeEnemyDamage(enemyCenterX) {
-  if (player.invTimer > 0 || player.spikeStunTimer > 0) return;
+  if (player.invTimer > 0 || player.stunTimer > 0) return;
   player.hp -= 1;
   if (player.hp <= 0) { triggerDeath(); return; }
   const pushDir = (player.x + player.w / 2) > enemyCenterX ? 1 : -1;
@@ -1866,10 +1882,22 @@ function updateEnemies() {
       if (Math.sqrt(dx * dx + dy * dy) < CONFIG.ENEMY_SPIKE_DIST) { tooCloseToSpike = true; break; }
     }
 
+    // Check 100px proximity to any floor hole
+    let tooCloseToHole = false;
+    for (const hole of floorHoleList) {
+      const holeLeft = hole.x, holeRight = hole.x + hole.w;
+      // Distance from enemy center to nearest edge of the hole
+      let dist;
+      if (enemyCX < holeLeft) dist = holeLeft - enemyCX;
+      else if (enemyCX > holeRight) dist = enemyCX - holeRight;
+      else dist = 0; // inside hole horizontally
+      if (dist < CONFIG.ENEMY_SPIKE_DIST) { tooCloseToHole = true; break; }
+    }
+
     const tooClose = Math.abs(nextX + enemy.w / 2 - spawnX) < CONFIG.ENEMY_SPAWN_DIST;
-    if (!groundBelow || hitsSpike || tooCloseToSpike || tooClose) enemy.dir *= -1;
+    if (!groundBelow || hitsSpike || tooCloseToSpike || tooCloseToHole || tooClose) enemy.dir *= -1;
     else enemy.x = nextX;
-    if (player.invTimer <= 0 && player.spikeStunTimer <= 0 && rectsOverlap(player, enemy)) takeEnemyDamage(enemy.x + enemy.w / 2);
+    if (player.invTimer <= 0 && player.stunTimer <= 0 && rectsOverlap(player, enemy)) takeEnemyDamage(enemy.x + enemy.w / 2);
   }
 }
 
@@ -1888,9 +1916,9 @@ function update() {
 
   if (player.invTimer > 0) player.invTimer--;
 
-  // Spike stun — player completely frozen, counts down
-  if (player.spikeStunTimer > 0) {
-    player.spikeStunTimer--;
+  // Damage stun — player completely frozen (spike hit or fall damage), counts down
+  if (player.stunTimer > 0) {
+    player.stunTimer--;
     player.vx = 0; player.vy = 0;
     // Still clear input flags so nothing queues up
     jumpPressedThisFrame = false; jumpReleasedThisFrame = false;
@@ -2115,6 +2143,27 @@ function update() {
     if (!orb.active && orb.respawns) { orb.respawnTimer--; if (orb.respawnTimer <= 0) orb.active = true; }
   }
 
+  // Fade platforms — cycle: visible (fading out) → gone → visible again
+  for (const plat of platforms) {
+    if (!plat.fade) continue;
+    if (plat.fadeGone) {
+      // Currently gone — count up until reappear
+      plat.fadeGoneTimer++;
+      if (plat.fadeGoneTimer >= CONFIG.FADE_GONE_FRAMES) {
+        plat.fadeGone = false;
+        plat.fadeTimer = 0;
+        plat.fadeGoneTimer = 0;
+      }
+    } else {
+      // Currently visible — count up toward fading out
+      plat.fadeTimer++;
+      if (plat.fadeTimer >= plat.fadeFrames) {
+        plat.fadeGone = true;
+        plat.fadeGoneTimer = 0;
+      }
+    }
+  }
+
   // Physics + AI
   resolveCollisions();
   resolveTriangleCollisions();
@@ -2145,7 +2194,7 @@ function update() {
 
   // Spike body contact — spike-specific damage (half invincibility, frozen)
   for (const sp of spikeList) {
-    if (player.invTimer <= 0 && player.spikeStunTimer <= 0 && rectsOverlap(player, sp)) { takeSpikeDamage(); break; }
+    if (player.invTimer <= 0 && player.stunTimer <= 0 && rectsOverlap(player, sp)) { takeSpikeDamage(); break; }
   }
 
   // Fall off bottom — smart respawn near hole edge
@@ -2256,8 +2305,16 @@ function drawPlatforms() {
   const ghosting = player.ghostTimer > 0;
   const shimmerPhase = Date.now() * 0.004;
   for (const plat of platforms) {
+    // Skip faded-out platforms entirely
+    if (plat.fade && plat.fadeGone) continue;
+
     const sx = plat.x - camera.x, sy = plat.y - camera.y;
     if (sx + plat.w < 0 || sx > CONFIG.VIEW_W || sy + plat.h < 0 || sy > CONFIG.VIEW_H) continue;
+
+    // Fade opacity (1.0 → 0.0 over fadeFrames)
+    if (plat.fade) {
+      ctx.globalAlpha = 1 - (plat.fadeTimer / plat.fadeFrames);
+    }
 
     // Body
     ctx.fillStyle = plat.isGround ? CONFIG.GROUND_COLOR : CONFIG.PLATFORM_COLOR;
@@ -2278,6 +2335,11 @@ function drawPlatforms() {
       ctx.strokeStyle = 'rgba(220,220,255,' + (0.15 + 0.1 * Math.sin(shimmerPhase * 1.5)) + ')';
       ctx.lineWidth = 1;
       ctx.strokeRect(sx + 0.5, sy + 0.5, plat.w - 1, plat.h - 1);
+    }
+
+    // Restore alpha after fade platform
+    if (plat.fade) {
+      ctx.globalAlpha = 1;
     }
   }
 }
@@ -2646,9 +2708,9 @@ function drawTransitionBanner() {
 
 
 function drawDeathScreen() {
-  // 0–4s: fade from 0% to 90% opacity. 4–5s: hold at 90%.
+  // 0–4s: fade from 0% to 100% opacity. 4–8s: hold at 100%.
   const fadeProgress = Math.min(deathTimer / DEATH_FADE_MS, 1.0);
-  const alpha = fadeProgress * 0.9;
+  const alpha = fadeProgress;
 
   if (deathScreenImg.complete && deathScreenImg.naturalWidth > 0) {
     ctx.globalAlpha = alpha;
